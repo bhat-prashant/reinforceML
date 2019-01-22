@@ -1,8 +1,12 @@
+
 import logging
 
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.datasets import load_breast_cancer
 from sklearn.impute import SimpleImputer
+
+from transformer import UnaryTransformer, BinaryTransformer, HigherOrderTransformer, get_transformers
 
 
 def impute(X, y=None):
@@ -39,43 +43,6 @@ class OneHotEncoder(BaseEstimator, TransformerMixin):
         return R
 
 
-class ColumnSelector(BaseEstimator, TransformerMixin):
-    def __init__(self, key, row_space=True, as_matrix=True):
-        self.key = key
-        self.row_space = row_space
-        self.as_matrix = as_matrix
-
-    def fit(self, X, y=None):
-        return self
-
-    def transform(self, data_matrix):
-        if self.row_space:
-            R = data_matrix[:, [self.key]]  # eg numpy array
-        else:
-            R = data_matrix[[self.key]]  # eg pandas dataframe
-
-        R = np.array(R)
-
-        if not self.as_matrix:
-            R = R[:, 0]
-
-        return R
-
-
-# TODO - Build intelligent transformations. Add more to the list in the future.
-def get_transformers():
-    transformers = {
-        'add': np.add,
-        'subtract': np.subtract,
-        'multiply': np.multiply,
-        'division': np.divide,
-        'log': np.log,
-        'square': np.square,
-        'square_root': np.sqrt
-    }
-    return transformers
-
-
 def create_chromosomes(X, y=None, original=True, transform=True, transformers=None):
     chromosomes = []
     X_real = []
@@ -84,10 +51,23 @@ def create_chromosomes(X, y=None, original=True, transform=True, transformers=No
     if original:
         chromosomes.extend(X_real)
     if transform:
-        if not isinstance(transformers, dict):
-            logging.error("Unknown transformer list. Expected type \'dict\', got instead ", type(transformers))
+        if transformers is None:
             transformers = get_transformers()
         for chrome in X_real:
-            for i in transformers:
-                chromosomes.extend(transformers[i](chrome))
+            for trans in transformers.values():
+                if isinstance(trans, UnaryTransformer):  # todo - binary and higher order transform
+                    chromosomes.append(trans.transform(chrome))
+                elif isinstance(trans, BinaryTransformer):
+                    pass
+                elif isinstance(trans, HigherOrderTransformer):
+                    pass
+                else:
+                    logging.error("Unknown transformer type : ", type(trans))
     return chromosomes
+
+
+data = load_breast_cancer()
+x = data.data
+y = data.target
+chrom = create_chromosomes(x)
+print('')
