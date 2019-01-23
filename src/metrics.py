@@ -17,3 +17,5 @@ def final_reward(X, y, estimator=RandomForestClassifier(n_estimators=500), score
     if hasattr(estimator, 'coef_') and coef:
         return score(y_test, y_pred), estimator.coef_
     return score(y_test, y_pred)
+
+# TODO Possibly Reinforcement Learning (Q-Learning) as it will reduce  accuracy computation for every individual

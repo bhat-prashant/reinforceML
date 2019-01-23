@@ -3,16 +3,9 @@ import logging
 
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.datasets import load_breast_cancer
 from sklearn.impute import SimpleImputer
 
 from transformer import UnaryTransformer, BinaryTransformer, HigherOrderTransformer, get_transformers
-
-
-def impute(X, y=None):
-    imputer = SimpleImputer()
-    X = imputer.fit_transform(X)
-    return X
 
 
 class OneHotEncoder(BaseEstimator, TransformerMixin):
@@ -43,6 +36,13 @@ class OneHotEncoder(BaseEstimator, TransformerMixin):
         return R
 
 
+def impute(X):
+    imputer = SimpleImputer()
+    X = imputer.fit_transform(X)
+    return X
+
+
+
 def create_chromosomes(X, y=None, original=True, transform=True, transformers=None):
     chromosomes = []
     X_real = []
@@ -55,7 +55,7 @@ def create_chromosomes(X, y=None, original=True, transform=True, transformers=No
             transformers = get_transformers()
         for chrome in X_real:
             for trans in transformers.values():
-                if isinstance(trans, UnaryTransformer):  # todo - binary and higher order transform
+                if isinstance(trans, UnaryTransformer):  # Todo - binary and higher order transform
                     chromosomes.append(trans.transform(chrome))
                 elif isinstance(trans, BinaryTransformer):
                     pass
@@ -64,10 +64,3 @@ def create_chromosomes(X, y=None, original=True, transform=True, transformers=No
                 else:
                     logging.error("Unknown transformer type : ", type(trans))
     return chromosomes
-
-
-data = load_breast_cancer()
-x = data.data
-y = data.target
-chrom = create_chromosomes(x)
-print('')
