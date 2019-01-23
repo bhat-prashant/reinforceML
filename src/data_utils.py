@@ -2,44 +2,20 @@
 import logging
 
 import numpy as np
-from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.impute import SimpleImputer
-
 from transformer import UnaryTransformer, BinaryTransformer, HigherOrderTransformer, get_transformers
 
 
-class OneHotEncoder(BaseEstimator, TransformerMixin):
-    def _digest_shape(self, X):
-        if isinstance(X, np.ndarray):
-            if X.ndim == 1:
-                M = X
-            elif X.ndim == 2:
-                M = X[:, 0]
-            else:
-                raise ValueError('One hot encoder does not work with nd, n>2 data')
-        elif isinstance(X, list):
-            if isinstance(X[0], list):
-                M = [x[0] for x in X]
-            else:
-                M = X
-        return M
 
-    def fit(self, X, y=None):
-        self.classes_ = list(sorted(set(self._digest_shape(X))))
-        return self
+def validate_inputs(X, y):
+    valid = True
+    if isinstance(X, np.ndarray) or isinstance(y, np.ndarray):
+        pass
+        # TODO - preprocessing such as OneHotEncoding, Imputing, Scaling etc.
+    else:
+        valid = False
+        logging.error('Expected \'numpy.ndarray\' as inputs, Instead got {} and {}', type(X), type(y) )
+    return valid
 
-    def transform(self, X, y=None):
-        M = self._digest_shape(X)
-        M = np.array(M)
-        R = [M == c for c in self.classes_]
-        R = np.column_stack(R)
-        return R
-
-
-def impute(X):
-    imputer = SimpleImputer()
-    X = imputer.fit_transform(X)
-    return X
 
 
 
@@ -64,3 +40,41 @@ def create_chromosomes(X, y=None, original=True, transform=True, transformers=No
                 else:
                     logging.error("Unknown transformer type : ", type(trans))
     return chromosomes
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
