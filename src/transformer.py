@@ -1,17 +1,10 @@
-'''
-TODO --
-1. Mutate
-2. Cross Over
-3. Take special note for handling numpy arrays ( https://deap.readthedocs.io/en/master/tutorials/advanced/numpy.html )
-4. Reinforcement Learning
 
-'''
 import numpy as np
 import logging
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
-class BaseTransformer():
+class BaseTransformer:
     __slots__ = ['transformer', 'param_count', 'name']
 
     def __init__(self, transformer, param_count, name):
@@ -57,7 +50,7 @@ class HigherOrderTransformer(BaseTransformer):
 
 
 class OneHotEncoder(BaseEstimator, TransformerMixin):
-    def _digest_shape(self, X):
+    def _digest_shape(X):
         if isinstance(X, np.ndarray):
             if X.ndim == 1:
                 M = X
@@ -72,18 +65,18 @@ class OneHotEncoder(BaseEstimator, TransformerMixin):
                 M = X
         return M
 
-    def fit(self, X, y=None):
+    def fit(self, X):
         self.classes_ = list(sorted(set(self._digest_shape(X))))
         return self
 
-    def transform(self, X, y=None):
+    def transform(self, X):
         M = self._digest_shape(X)
         M = np.array(M)
         R = [M == c for c in self.classes_]
         R = np.column_stack(R)
         return R
 
-
+# Future Work : Add all possible transformers.
 def get_transformers():
     transformers = dict()
     # transformers['add'] = BinaryTransformer(transformer=np.add)

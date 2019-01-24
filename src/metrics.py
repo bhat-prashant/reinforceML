@@ -28,20 +28,3 @@ def evaluate(individual, y):
         X = np.reshape(X, (X.shape[0], 1))
     return fitness_score(X, y)
 
-# crossover / mate function for two individuals
-def mate(individual1, individual2, relevacne=0.25):
-    X1 = individual1.value
-    X2 = individual2.value
-    i1 = [i for i in range(individual1.feature_importance) if individual1.feature_importance[i] > relevacne]
-    X1 = X1[:, i1]
-    i2 = [i for i in range(individual1.feature_importance) if individual1.feature_importance[i] > relevacne]
-    X2 = X2[:, i2]
-    return np.append(X1, X2, axis=1)
-
-# Future Work: Reinforcement Learning
-def mutate(individual, transformers):
-    X = individual.value
-    key = random.choice(list(transformers.keys()))
-    # Future Work : Decorators for pre and post sanity check
-    X = transformers[key].transform(X)
-

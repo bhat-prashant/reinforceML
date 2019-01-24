@@ -1,17 +1,16 @@
-import logging
 import numpy as np
 import multiprocessing
 import random
-from data_utils import validate_inputs
-from deap import creator
-from deap import base
+from data_util import validate_inputs
+from deap import creator, base
 from transformer import get_transformers
 from transformer import UnaryTransformer, BinaryTransformer, HigherOrderTransformer
-from metrics import evaluate, fitness_score, mate, mutate
+from metrics import evaluate, fitness_score
 import copy
+from gp_util import mate, mutate, Individual
 
 
-class BaseFeatureEngineer():
+class BaseFeatureEngineer:
     __slots__ = ['generation', 'pop_size', 'mutation_rate', 'crossover_rate', 'scoring',
                  'upsample', 'downsample', 'subsample', 'random_state', 'verbosity',
                  'feature_count', 'chromosome_count', 'pop', 'transformers', 'pool',
@@ -88,7 +87,7 @@ class BaseFeatureEngineer():
         return ind
 
     def setup_toolbox(self):
-        creator.create("FitnessMax", base.Fitness, weights=(1.0))
+        creator.create("FitnessMax", base.Fitness, weights=1.0)
         creator.create("Individual", Individual, fitness=creator.FitnessMax)
         self.toolbox = base.Toolbox()
         self.toolbox.register("individual", self.create_individual, creator.Individual)
@@ -122,35 +121,6 @@ class BaseFeatureEngineer():
 
 
 
-class Individual:
-
-    __slots__ = ['fitness', 'data', 'feature_importance', 'features']
-
-    def __init__(self, data):
-        self.fitness = 0
-        self.data = data
-        self.feature_importance = []
-        self.features = []
-        self.extract_features()
-
-    def extract_features(self):
-        if self.data.ndim == 1:
-            self.data = np.reshape(self.data, (self.data.shape[0], 1))
-        for i in range(self.data.shape[1]):
-            feat = Feature(i)
-            self.features.append(feat)
-            self.feature_importance.append(0)
-
-
-
-
-class Feature:
-
-    __slots__ = ['transformer_list', 'index']
-
-    def __init__(self, index):
-        self.transformer_list = []
-        self.index = index
 
 
 
