@@ -12,6 +12,8 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 
 class BaseTransformer():
+    __slots__ = ['transformer', 'param_count', 'name']
+
     def __init__(self, transformer, param_count, name):
         self.transformer = transformer
         # number of parameters in a mathematical transformer, ex. add() has 2

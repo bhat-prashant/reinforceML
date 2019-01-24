@@ -1,16 +1,24 @@
 import logging
 import numpy as np
+import multiprocessing
 import random
 from data_utils import validate_inputs
 from deap import creator
 from deap import base
 from transformer import get_transformers
 from transformer import UnaryTransformer, BinaryTransformer, HigherOrderTransformer
-from metrics import evaluate, fitness_score
-class BaseFeatureEngineer():
+from metrics import evaluate, fitness_score, mate, mutate
+import copy
 
-    def __init__(self, generation=5, pop_size=None, mutation_rate=0.8,
-                 crossover_rate=0.2, scoring='accuracy', upsample=False,
+
+class BaseFeatureEngineer():
+    __slots__ = ['generation', 'pop_size', 'mutation_rate', 'crossover_rate', 'scoring',
+                 'upsample', 'downsample', 'subsample', 'random_state', 'verbosity',
+                 'feature_count', 'chromosome_count', 'pop', 'transformers', 'pool',
+                 'toolbox', 'initial_score', 'X', 'y']
+
+    def __init__(self, generation=5, pop_size=None, mutation_rate=0.3,
+                 crossover_rate=0.7, scoring='accuracy', upsample=False,
                  downsample=False, random_state=None, verbosity=0, subsample=True):
         self.generation = generation
         self.pop_size = pop_size
@@ -23,9 +31,14 @@ class BaseFeatureEngineer():
         self.random_state = random_state
         self.verbosity = verbosity
         self.feature_count = None
+        self.initial_score = None
         self.chromosome_count = None
         self.pop = None
         self.transformers = get_transformers()
+        self.pool = multiprocessing.Pool()
+        self.toolbox = None
+        self.X = None
+        self.y = None
 
     def set_random_state(self):
         if self.random_state is not None:
@@ -39,18 +52,24 @@ class BaseFeatureEngineer():
     def create_population(self):
         population = []
         for column in range(self.X.shape[1]):
-            population.append(self.create_individual(self.X[:, column]))
+            individual = self.create_individual(self.X[:, column])
+            individual.fitness, individual.feature_importance = evaluate(individual, self.y)
+            population.append(individual)
         remaining = self.pop_size - self.feature_count
         i = 0
         while remaining > 0:
             # Future Work: Intelligently select transformations in the beginning based on feature's meta information like datetime etc
+            # Future Work: Initially, features with lesser 'importance' can be transformed first
             key = random.choice(list(self.transformers.keys()))
             trans = self.transformers[key]
             if isinstance(trans, UnaryTransformer):
-                ind_column = trans.transform(population[i].value)
-                individual = self.create_individual(ind_column)
-                individual.transformer_list.append(trans)
-                population.append(individual)
+                data_transformed = trans.transform(population[i].data)
+                new_individual = copy.deepcopy(population[i])
+                new_individual.data = data_transformed
+                new_individual.fitness, new_individual.feature_importance = evaluate(new_individual, self.y)
+                for j in range(len(new_individual.feature_importance)):
+                    new_individual.features[j].transformer_list.append(trans.name)
+                population.append(new_individual)
                 # Future Work: - Binary and higher order transform
             elif isinstance(trans, BinaryTransformer):
                 pass
@@ -64,24 +83,25 @@ class BaseFeatureEngineer():
 
 
     @staticmethod
-    def create_individual(column):
-        feature = Feature(column)
-        return feature
+    def create_individual(data):
+        ind = Individual(data)
+        return ind
 
     def setup_toolbox(self):
         creator.create("FitnessMax", base.Fitness, weights=(1.0))
-        creator.create("Individual", Feature, fitness=creator.FitnessMax)
+        creator.create("Individual", Individual, fitness=creator.FitnessMax)
         self.toolbox = base.Toolbox()
         self.toolbox.register("individual", self.create_individual, creator.Individual)
         self.toolbox.register("population", self.create_population)
         self.toolbox.register("evaluate", evaluate)
-        # self.toolbox.register("mate", tools.cxTwoPoint)
-        # self.toolbox.register("mutate", tools.mutFlipBit, indpb=0.05)
+        self.toolbox.register("mate", mate)
+        self.toolbox.register("map", self.pool.map)
+        self.toolbox.register("mutate", mutate, self.transformers)
         # self.toolbox.register("select", tools.selTournament, tournsize=3)
 
     def fit_init(self):
         self.feature_count = self.X.shape[1]
-        self.initial_score = fitness_score(self.X, self.y)
+        self.initial_score, _ = fitness_score(self.X, self.y)
         self.setup_toolbox()
         if self.pop_size is None:
             self.pop_size = self.feature_count
@@ -101,30 +121,36 @@ class BaseFeatureEngineer():
 
 
 
-class Feature():
 
-    def __init__(self, column):
-        self.transformer_list = []
-        self.compute_meta_features(column)
+class Individual:
+
+    __slots__ = ['fitness', 'data', 'feature_importance', 'features']
+
+    def __init__(self, data):
         self.fitness = 0
+        self.data = data
+        self.feature_importance = []
+        self.features = []
+        self.extract_features()
 
-    # For now, it is assumed that input features are numerical !!
-    # Future Work: add other meta information about each feature / chromosome
-    def compute_meta_features(self, column):
-        if isinstance(column, np.ndarray):
-            self.value = column
-            self.mean = np.mean(column)
-            self.variance = np.var(column)
-        else:
-            raise Exception("Unknown data format. Expected \'numpy.ndarray\', Instead got {}", type(column))
-
-
-
-
+    def extract_features(self):
+        if self.data.ndim == 1:
+            self.data = np.reshape(self.data, (self.data.shape[0], 1))
+        for i in range(self.data.shape[1]):
+            feat = Feature(i)
+            self.features.append(feat)
+            self.feature_importance.append(0)
 
 
 
 
+class Feature:
+
+    __slots__ = ['transformer_list', 'index']
+
+    def __init__(self, index):
+        self.transformer_list = []
+        self.index = index
 
 
 

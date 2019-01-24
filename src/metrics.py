@@ -7,36 +7,41 @@ TODO --
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
-from sklearn.svm import LinearSVC
+import random
+import numpy as np
 
-# test accuracy
-def fitness_score(X, y, estimator=RandomForestClassifier(n_estimators=500), score=accuracy_score, coef=False):
-    X_train, X_test, y_train, y_test = train_test_split(X, y)
+# Test accuracy , feature importance
+def fitness_score(X, y, estimator=RandomForestClassifier(n_estimators=100),
+                  score=accuracy_score, coef=False, random_state=None):
+    if X.ndim == 1:
+        np.reshape(X, (X.shape[0], 1))
+    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=random_state)
     estimator.fit(X_train, y_train)
     y_pred = estimator.predict(X_test)
-    if hasattr(estimator, 'coef_') and coef:
-        return score(y_test, y_pred), estimator.coef_
-    return score(y_test, y_pred)
+    return score(y_test, y_pred), estimator.feature_importances_
 
 
+# evaluation function for each individual
+def evaluate(individual, y):
+    X = individual.data
+    if X.ndim == 1:
+        X = np.reshape(X, (X.shape[0], 1))
+    return fitness_score(X, y)
 
-def evaluate(feature, y, penalty='l2', loss='squared_hinge', C=1.0,
-             multi_class='ovr', random_state=None, max_iter=1000):
-    X = feature.value
-    estimator = LinearSVC(penalty=penalty, loss=loss, C=C, multi_class=multi_class,
-                          random_state=random_state, max_iter=max_iter)
-    
+# crossover / mate function for two individuals
+def mate(individual1, individual2, relevacne=0.25):
+    X1 = individual1.value
+    X2 = individual2.value
+    i1 = [i for i in range(individual1.feature_importance) if individual1.feature_importance[i] > relevacne]
+    X1 = X1[:, i1]
+    i2 = [i for i in range(individual1.feature_importance) if individual1.feature_importance[i] > relevacne]
+    X2 = X2[:, i2]
+    return np.append(X1, X2, axis=1)
 
-    pass
+# Future Work: Reinforcement Learning
+def mutate(individual, transformers):
+    X = individual.value
+    key = random.choice(list(transformers.keys()))
+    # Future Work : Decorators for pre and post sanity check
+    X = transformers[key].transform(X)
 
-
-
-
-
-
-
-
-
-
-
-# Future Work: Possibly Reinforcement Learning (Q-Learning) as it will reduce  accuracy computation for every individual

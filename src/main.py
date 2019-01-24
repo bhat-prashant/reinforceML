@@ -1,3 +1,9 @@
+import time
+start = time.time()
+def warn(*args, **kwargs):
+    pass
+import warnings
+warnings.warn = warn
 from reinforce import FeatureEngineer
 
 
@@ -12,4 +18,6 @@ y = data.target
 feat = FeatureEngineer(pop_size=100)
 feat.fit(X, y)
 
+end = time.time()
+print("Execution time : ", end - start)
 
