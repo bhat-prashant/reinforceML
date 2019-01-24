@@ -1,29 +1,32 @@
-import numpy as np
+import copy
 import multiprocessing
 import random
+import numpy as np
+from deap import creator, base, algorithms, tools
+from sklearn.metrics import accuracy_score
+
 from data_util import validate_inputs
-from deap import creator, base
-from transformer import get_transformers
-from transformer import UnaryTransformer, BinaryTransformer, HigherOrderTransformer
+from gp_util import mate, mutate, select, Individual
+from transformer import get_transformers, UnaryTransformer, BinaryTransformer, HigherOrderTransformer
 from metrics import evaluate, fitness_score
-import copy
-from gp_util import mate, mutate, Individual
+
 
 
 class BaseFeatureEngineer:
-    __slots__ = ['generation', 'pop_size', 'mutation_rate', 'crossover_rate', 'scoring',
+
+    __slots__ = ['generation', 'pop_size', 'mutation_rate', 'crossover_rate', 'scorer',
                  'upsample', 'downsample', 'subsample', 'random_state', 'verbosity',
                  'feature_count', 'chromosome_count', 'pop', 'transformers', 'pool',
                  'toolbox', 'initial_score', 'X', 'y']
 
     def __init__(self, generation=5, pop_size=None, mutation_rate=0.3,
-                 crossover_rate=0.7, scoring='accuracy', upsample=False,
+                 crossover_rate=0.7, scorer=accuracy_score, upsample=False,
                  downsample=False, random_state=None, verbosity=0, subsample=True):
         self.generation = generation
         self.pop_size = pop_size
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
-        self.scoring = scoring
+        self.scorer = scorer
         self.upsample = upsample
         self.downsample = downsample
         self.subsample = subsample
@@ -44,6 +47,7 @@ class BaseFeatureEngineer:
             np.random.seed(self.random_state)
             random.seed(self.random_state)
         else:
+            self.random_state = 10
             np.random.seed(10)
             random.seed(10)
 
@@ -52,7 +56,8 @@ class BaseFeatureEngineer:
         population = []
         for column in range(self.X.shape[1]):
             individual = self.create_individual(self.X[:, column])
-            individual.fitness, individual.feature_importance = evaluate(individual, self.y)
+            individual.fitness, individual.feature_importance = evaluate(individual, self.y,
+                                                                         scorer=self.scorer)
             population.append(individual)
         remaining = self.pop_size - self.feature_count
         i = 0
@@ -65,7 +70,8 @@ class BaseFeatureEngineer:
                 data_transformed = trans.transform(population[i].data)
                 new_individual = copy.deepcopy(population[i])
                 new_individual.data = data_transformed
-                new_individual.fitness, new_individual.feature_importance = evaluate(new_individual, self.y)
+                new_individual.fitness, new_individual.feature_importance = evaluate(new_individual, self.y,
+                                                                                     scorer=self.scorer)
                 for j in range(len(new_individual.feature_importance)):
                     new_individual.features[j].transformer_list.append(trans.name)
                 population.append(new_individual)
@@ -96,7 +102,7 @@ class BaseFeatureEngineer:
         self.toolbox.register("mate", mate)
         self.toolbox.register("map", self.pool.map)
         self.toolbox.register("mutate", mutate, self.transformers)
-        # self.toolbox.register("select", tools.selTournament, tournsize=3)
+        self.toolbox.register("select", select)
 
     def fit_init(self):
         self.feature_count = self.X.shape[1]
@@ -110,12 +116,39 @@ class BaseFeatureEngineer:
         pass
 
 
+    def evolve(self):
+        hof = tools.HallOfFame(1)
+        stats = tools.Statistics(lambda ind: ind.fitness)
+        # Begin the generational process
+        for gen in range(1, self.generation + 1):
+            # Select the next generation individuals
+            offspring = self.toolbox.select(self.pop, 60)
+            for i in range(1, len(offspring), 2):
+                if random.random() < self.crossover_rate:
+                    offspring[i - 1], offspring[i] = self.toolbox.mate(offspring[i - 1],
+                                                                  offspring[i])
+
+                # Slightly different from original algorithm
+                if random.random() < self.mutation_rate:
+                    offspring[i] = self.toolbox.mutate(offspring[i])
+
+            for ind in offspring:
+                if not ind.fitness == 0:
+                    ind.fitness, ind.feature_importance = self.toolbox.evaluate(ind, self.y, scorer=self.scorer)
+
+            self.pop.extend(offspring)
+        return sorted(self.pop, key=lambda x: x.fitness, reverse=True)[0]
+
     def fit(self, X, y):
         self.set_random_state()
         if validate_inputs(X, y):
             self.X = X
             self.y = y
             self.fit_init()
+            best_ind = self.evolve()
+            print("Initial score : ", self.initial_score)
+            print("Best Fitness : ", best_ind.fitness)
+
 
 
 

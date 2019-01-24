@@ -7,24 +7,34 @@ def mate(individual1, individual2, relevacne=0.25):
     # Retain features with importance more than the relevance and merge two individuals.
     # Future Work : come up with 'intelligent' mating technique. Mating between individuals should be based on the 'attraction'
     # i.e Good 'looking' individuals should mate with other good 'looking' (accuracy) individuals
-    i1 = [i for i in range(individual1.feature_importance) if individual1.feature_importance[i] > relevacne]
-    individual1.data = individual1.data[:, i1]
-    individual1.features = [individual1.features[j] for j in i1]
-    i2 = [i for i in range(individual2.feature_importance) if individual2.feature_importance[i] > relevacne]
-    individual2.data = individual2.data[:, i2]
-    individual2.features = [individual2.features[j] for j in i2]
-    individual1.merge(individual2)
-    return individual1
+    i1 = [i for i in range(len(individual1.feature_importance)) if individual1.feature_importance[i] > relevacne]
+    offspring1 = Individual(individual1.data[:, i1])
+    offspring1.features = [individual1.features[j] for j in i1]
+    i2 = [i for i in range(len(individual2.feature_importance)) if individual2.feature_importance[i] > relevacne]
+    offspring2 = Individual(individual2.data[:, i2])
+    offspring2.features = [individual2.features[j] for j in i2]
+    # missing : merge offsprings
+    return offspring1, offspring2
 
 
 # Future Work: Reinforcement Learning
-def mutate(individual, transformers):
+def mutate(transformers, individual):
     key = random.choice(list(transformers.keys()))
     # Future Work : Decorators for pre and post sanity check
     # Example : Features are not compatible, Go out of bound after squaring many times etc.
     individual.data = transformers[key].transform(individual.data)
     for feat in individual.features:
         feat.transformer_list.extend(transformers[key].name)
+    return individual
+
+
+
+# select best individuals after cross over and mutation
+def select(pop, percent=70):
+    pop.sort(key=lambda x: x.fitness, reverse=True)
+    # Future Work : 'Intelligently' make selection. / create exponential decay in selection
+    return pop[0:int(len(pop)*percent) if  int(len(pop)*percent) > 1 else 1]
+
 
 
 

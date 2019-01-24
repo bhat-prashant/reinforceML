@@ -84,6 +84,6 @@ def get_transformers():
     # transformers['multiply'] = BinaryTransformer(transformer=np.multiply)
     # transformers['division'] = BinaryTransformer(transformer=np.divide)
     # transformers['log'] = UnaryTransformer(transformer=np.log)
-    transformers['square'] = UnaryTransformer(name='square', transformer=np.square)
+    # transformers['squareuare'] = UnaryTransformer(name='square', transformer=np.square)
     transformers['square_root'] = UnaryTransformer(name='square_root', transformer=np.sqrt)
     return transformers

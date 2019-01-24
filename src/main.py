@@ -1,9 +1,9 @@
 import time
 start = time.time()
-def warn(*args, **kwargs):
-    pass
-import warnings
-warnings.warn = warn
+# def warn(*args, **kwargs):
+#     pass
+# import warnings
+# warnings.warn = warn
 from reinforce import FeatureEngineer
 
 
@@ -15,7 +15,7 @@ y = data.target
 # Future Work: Regression. For now, only binary classification is supported
 # For now, use only numerical inputs and outputs.
 # Future Work: Preprocessing is prending such as handling categorical, datetime etc.
-feat = FeatureEngineer(pop_size=100)
+feat = FeatureEngineer(pop_size=40)
 feat.fit(X, y)
 
 end = time.time()
