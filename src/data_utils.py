@@ -10,7 +10,7 @@ def validate_inputs(X, y):
     valid = True
     if isinstance(X, np.ndarray) or isinstance(y, np.ndarray):
         pass
-        # TODO - preprocessing such as OneHotEncoding, Imputing, Scaling etc.
+        # Future Work: - preprocessing such as OneHotEncoding, Imputing, Scaling etc.
     else:
         valid = False
         logging.error('Expected \'numpy.ndarray\' as inputs, Instead got {} and {}', type(X), type(y) )
@@ -31,7 +31,7 @@ def create_chromosomes(X, y=None, original=True, transform=True, transformers=No
             transformers = get_transformers()
         for chrome in X_real:
             for trans in transformers.values():
-                if isinstance(trans, UnaryTransformer):  # Todo - binary and higher order transform
+                if isinstance(trans, UnaryTransformer):  # Future Work: - binary and higher order transform
                     chromosomes.append(trans.transform(chrome))
                 elif isinstance(trans, BinaryTransformer):
                     pass

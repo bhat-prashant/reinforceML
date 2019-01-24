@@ -12,10 +12,11 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 
 class BaseTransformer():
-    def __init__(self, transformer=None, param_count=None):
+    def __init__(self, transformer, param_count, name):
         self.transformer = transformer
         # number of parameters in a mathematical transformer, ex. add() has 2
         self.param_count = param_count
+        self.name = name
         pass
 
     def set_transformer(self, transformer):
@@ -39,18 +40,18 @@ class BaseTransformer():
 
 
 class UnaryTransformer(BaseTransformer):
-    def __init__(self, transformer=None, param_count=1):
-        super(UnaryTransformer, self).__init__(transformer, param_count)
+    def __init__(self, name, transformer, param_count=1, ):
+        super(UnaryTransformer, self).__init__(transformer, param_count, name)
 
 
 class BinaryTransformer(BaseTransformer):
-    def __init__(self, transformer=None, param_count=2):
-        super(BinaryTransformer, self).__init__(transformer, param_count)
+    def __init__(self, name, transformer, param_count=2):
+        super(BinaryTransformer, self).__init__(transformer, param_count, name)
 
 
 class HigherOrderTransformer(BaseTransformer):
-    def __init__(self, transformer=None, param_count=None):
-        super(HigherOrderTransformer, self).__init__(transformer, param_count)
+    def __init__(self, name, transformer, param_count=None):
+        super(HigherOrderTransformer, self).__init__(transformer, param_count, name)
 
 
 class OneHotEncoder(BaseEstimator, TransformerMixin):
@@ -88,6 +89,6 @@ def get_transformers():
     # transformers['multiply'] = BinaryTransformer(transformer=np.multiply)
     # transformers['division'] = BinaryTransformer(transformer=np.divide)
     # transformers['log'] = UnaryTransformer(transformer=np.log)
-    transformers['square'] = UnaryTransformer(transformer=np.square)
-    transformers['square_root'] = UnaryTransformer(transformer=np.sqrt)
+    transformers['square'] = UnaryTransformer(name='square', transformer=np.square)
+    transformers['square_root'] = UnaryTransformer(name='square_root', transformer=np.sqrt)
     return transformers
