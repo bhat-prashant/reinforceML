@@ -13,8 +13,8 @@ def mate(individual1, individual2, relevacne=0.25):
     i2 = [i for i in range(len(individual2.feature_importance)) if individual2.feature_importance[i] > relevacne]
     offspring2 = Individual(individual2.data[:, i2])
     offspring2.features = [individual2.features[j] for j in i2]
-    # missing : merge offsprings
-    return offspring1, offspring2
+    offspring1.merge(offspring2)
+    return offspring1
 
 
 # Future Work: Reinforcement Learning
@@ -30,10 +30,16 @@ def mutate(transformers, individual):
 
 
 # select best individuals after cross over and mutation
-def select(pop, percent=70):
+# Future Work : 'Intelligently' make selection. / create exponential decay in selection
+# Now, Top 60% and random 5% (lucky few)
+def select(pop, top=0.90, lucky=0.05):
     pop.sort(key=lambda x: x.fitness, reverse=True)
-    # Future Work : 'Intelligently' make selection. / create exponential decay in selection
-    return pop[0:int(len(pop)*percent) if  int(len(pop)*percent) > 1 else 1]
+    top_index = int(len(pop) * top)
+    top_individuals = pop[0:top_index]
+    lucky_indices = np.random.randint(top_index, len(pop), int(len(pop) * lucky))
+    lucky_individuals =  [pop[i] for i in lucky_indices]
+    top_individuals.extend(lucky_individuals)
+    return top_individuals
 
 
 

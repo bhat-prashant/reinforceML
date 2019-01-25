@@ -56,8 +56,7 @@ class BaseFeatureEngineer:
         population = []
         for column in range(self.X.shape[1]):
             individual = self.create_individual(self.X[:, column])
-            individual.fitness, individual.feature_importance = evaluate(individual, self.y,
-                                                                         scorer=self.scorer)
+            individual.fitness, individual.feature_importance = evaluate(individual, self.y, scorer=self.scorer)
             population.append(individual)
         remaining = self.pop_size - self.feature_count
         i = 0
@@ -117,26 +116,25 @@ class BaseFeatureEngineer:
 
 
     def evolve(self):
-        hof = tools.HallOfFame(1)
-        stats = tools.Statistics(lambda ind: ind.fitness)
         # Begin the generational process
         for gen in range(1, self.generation + 1):
             # Select the next generation individuals
-            offspring = self.toolbox.select(self.pop, 60)
+            offspring = self.toolbox.select(self.pop, top=0.90)
             for i in range(1, len(offspring), 2):
                 if random.random() < self.crossover_rate:
-                    offspring[i - 1], offspring[i] = self.toolbox.mate(offspring[i - 1],
-                                                                  offspring[i])
-
+                    offspring[i] = self.toolbox.mate(offspring[i - 1], offspring[i])
                 # Slightly different from original algorithm
                 if random.random() < self.mutation_rate:
                     offspring[i] = self.toolbox.mutate(offspring[i])
 
             for ind in offspring:
-                if not ind.fitness == 0:
+                if not ind.features:
+                    offspring.remove(ind)
+                    continue
+                if ind.fitness == 0:
                     ind.fitness, ind.feature_importance = self.toolbox.evaluate(ind, self.y, scorer=self.scorer)
 
-            self.pop.extend(offspring)
+            self.pop[:] = offspring
         return sorted(self.pop, key=lambda x: x.fitness, reverse=True)[0]
 
     def fit(self, X, y):
