@@ -1,6 +1,5 @@
 
 import numpy as np
-import logging
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
@@ -27,16 +26,27 @@ class BaseTransformer:
     def set_param_count(self, param_count=None):
         self.param_count = param_count
 
-    def transform(self, *args):
-        if len(args) == self.param_count:
-            return self.transformer(*args)
-        else:
-            logging.error("Error! Expecting %d parameters, instead got %d".format(self.param_count, len(*args)))
 
 
 class UnaryTransformer(BaseTransformer):
     def __init__(self, name, transformer, param_count=1, ):
         super(UnaryTransformer, self).__init__(transformer, param_count, name)
+
+    # feat_imp is set default to -1 for newly transformed features. Their importance will be updated later during evaluation
+    # indices and node_names should be iterables
+    # This method makes changes to passed 'individual' and hence returns None
+    def transform(self, individual, indices, node_names, feat_imp=-1):
+        for index, node_name in zip(indices, node_names):
+            if individual.data.ndim == 1:
+                individual.data = self.transformer(individual.data)
+            else:
+                individual.data = self.transformer(individual.data[:, index])
+            new_node_name = self.name + '(' + node_name + ')'
+            individual.meta_data[index]['ancestor_graph'].add_node(str(new_node_name))
+            individual.meta_data[index]['ancestor_graph'].add_edge(node_name, new_node_name, transformer=self.name)
+            individual.meta_data[index]['node_name'] = new_node_name
+            individual.meta_data[index]['feature_importance'] = feat_imp
+
 
 
 class BinaryTransformer(BaseTransformer):

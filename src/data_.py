@@ -1,7 +1,7 @@
 
 import logging
-import numpy as np
 
+import numpy as np
 
 
 def validate_inputs(X, y):

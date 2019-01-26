@@ -9,6 +9,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 
+from gp_ import Individual
 
 
 # Test accuracy , feature importance
@@ -25,7 +26,10 @@ def fitness_score(X, y, estimator=RandomForestClassifier(n_estimators=100),
 
 # evaluation function for each individual
 def evaluate(individual, y, scorer=accuracy_score):
-    X = individual.data
+    if isinstance(individual, Individual):
+        X = individual.data
+    else:
+        X = individual
     if X.ndim == 1:
         X = np.reshape(X, (X.shape[0], 1))
     return fitness_score(X, y, score=scorer)

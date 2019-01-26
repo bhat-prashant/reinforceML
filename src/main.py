@@ -4,8 +4,7 @@ start = time.time()
 #     pass
 # import warnings
 # warnings.warn = warn
-from reinforce import FeatureEngineer
-import tpot
+from reinforce_ import FeatureEngineer
 
 from sklearn.datasets import load_breast_cancer
 data = load_breast_cancer()
