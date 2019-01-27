@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+__author__ = "Prashant Shivarm Bhat"
+__email__ = "PrashantShivaram@outlook.com"
 
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin

@@ -1,14 +1,19 @@
+#!/usr/bin/env python
+__author__ = "Prashant Shivarm Bhat"
+__email__ = "PrashantShivaram@outlook.com"
+
 import random
 
 import numpy as np
 
 
 # crossover / mate function for two individuals
-def mate(individual1, individual2, relevacne=0.25):
+def mate(individual_1, individual_2, relevacne=0.25):
     # Retain features with importance more than the relevance and merge two individuals.
     # Future Work : come up with 'intelligent' mating technique. Mating between individuals should be based on the 'attraction'
     # i.e Good 'looking' individuals should mate with other good 'looking' (accuracy) individuals
-    return individual1
+    indices_1 =
+    return individual_1
 
 
 # Future Work: Reinforcement Learning
@@ -18,17 +23,12 @@ def mutate(transformers, individual):
     # Example : Features are not compatible, Go out of bound after squaring many times etc.
     if transformers[key].param_count == 1:
         # Future Work: Do not apply UnaryTransformation on all features. select features 'intelligently'
+        node_names = []
+        indices = []
         for index in range(len(individual.meta_data)):
-            node_name = individual.meta_data[index]['node_name']
-            individual.data = transformers[key].transform(individual.data)
-            new_node_name = transformers[key].name + '(' + node_name + ')'
-            G = individual.meta_data[index]['ancestor_graph']
-            G.add_node(str(new_node_name))
-            G.add_edge(node_name, new_node_name, transformer=transformers[key].name)
-            # Update every features meta_data after applying transformation
-            individual.meta_data[index]['node_name'] = new_node_name
-            individual.meta_data[index]['feature_importance'] = -1
-            individual.meta_data[index]['ancestor_graph'] = G
+            indices.append(index)
+            node_names.append(individual.meta_data[index]['node_name'])
+        transformers[key].transform(individual, node_names, indices)
     return individual
 
 
@@ -72,7 +72,3 @@ class Individual:
         pass
     def merge(self, individual):
         pass
-
-    def asexual_copy(self):
-        individual = Individual(self.data, self.meta_data)
-        return individual

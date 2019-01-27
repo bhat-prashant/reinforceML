@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+__author__ = "Prashant Shivarm Bhat"
+__email__ = "PrashantShivaram@outlook.com"
+
 import time
 start = time.time()
 # def warn(*args, **kwargs):
@@ -16,7 +20,9 @@ y = data.target
 # Future Work: Preprocessing is prending such as handling categorical, datetime etc.
 feat = FeatureEngineer(pop_size=40, generation=10)
 feat.fit(X, y)
+feat.transform()
 
 end = time.time()
 print("Execution time : ", end - start)
+
 

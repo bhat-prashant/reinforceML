@@ -1,4 +1,8 @@
-import multiprocessing
+#!/usr/bin/env python
+__author__ = "Prashant Shivarm Bhat"
+__email__ = "PrashantShivaram@outlook.com"
+
+import copy
 import multiprocessing
 import random
 
@@ -75,7 +79,7 @@ class BaseFeatureEngineer:
 
             if isinstance(trans, UnaryTransformer):
                 # Each individual has only one feature. Therefore, feat_imp is set to 1
-                new_individual = population[i].asexual_copy()
+                new_individual = copy.deepcopy(population[i])
                 trans.transform(new_individual, indices=[0], node_names=[str(i)], feat_imp=1)
                 new_individual.fitness, feature_importance = \
                     evaluate(new_individual, self._y, scorer=self._scorer)
@@ -144,7 +148,7 @@ class BaseFeatureEngineer:
         #             ind.fitness, ind.feature_importance = self._toolbox.evaluate(ind, self._y, scorer=self._scorer)
         #
         #     self._pop[:] = offspring
-        # return sorted(self._pop, key=lambda x: x.fitness, reverse=True)[0]
+        return sorted(self._pop, key=lambda x: x.fitness, reverse=True)[0]
 
     def fit(self, X, y):
         self._set_random_state()
@@ -152,6 +156,8 @@ class BaseFeatureEngineer:
             self._X = X
             self._y = y
             self._fit_init()
-            best_ind = self._evolve()
-            # print("Initial score : ", self._initial_score)
-            # print("Best Fitness : ", best_ind.fitness)
+
+    def transform(self):
+        best_ind = self._evolve()
+        print("Initial score : ", self._initial_score)
+        print("Best Fitness : ", best_ind.fitness)
