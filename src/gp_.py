@@ -8,12 +8,31 @@ import numpy as np
 
 
 # crossover / mate function for two individuals
-def mate(individual_1, individual_2, relevacne=0.25):
+def mate(individual_1, individual_2, relevance=0.25):
     # Retain features with importance more than the relevance and merge two individuals.
     # Future Work : come up with 'intelligent' mating technique. Mating between individuals should be based on the 'attraction'
     # i.e Good 'looking' individuals should mate with other good 'looking' (accuracy) individuals
-    indices_1 =
-    return individual_1
+    offspring_1 = squeeze_individual(individual_1, relevance)
+    offspring_2 = squeeze_individual(individual_2, relevance)
+    offspring_1.merge(offspring_2)
+    return offspring_1
+
+
+# Extract subset of features which have importance greater than the threshold
+def squeeze_individual(individual, relevance):
+    indices = []
+    meta_data = {}
+    i = 0
+    for key in individual.meta_data:
+        if individual.meta_data[key]['feature_importance'] > relevance:
+            indices.append(key)
+            meta_data[i] = individual.meta_data[key]
+            i = i + 1
+    data = individual.data[:, indices]
+    if data.shape[1] != len(meta_data):
+        raise Exception("Mismatch found between data and its meta information.!")
+    return Individual(data, meta_data)
+
 
 
 # Future Work: Reinforcement Learning
@@ -28,7 +47,7 @@ def mutate(transformers, individual):
         for index in range(len(individual.meta_data)):
             indices.append(index)
             node_names.append(individual.meta_data[index]['node_name'])
-        transformers[key].transform(individual, node_names, indices)
+        transformers[key].transform(individual, indices, node_names)
     return individual
 
 
@@ -65,10 +84,19 @@ class Individual:
 
     def __init__(self, data, meta_data, fitness=-1):
         self.data = data
+        if self.data.ndim == 1:
+            self.data = np.reshape(self.data, (self.data.shape[0], 1))
         self.fitness = fitness
         self.meta_data = meta_data
 
     def extract_features(self):
         pass
+
+    # Useful tool for merging two offsprings during mating
     def merge(self, individual):
-        pass
+        insert_index = self.data.shape[1]
+        for i in range(len(individual.meta_data)):
+            self.meta_data[insert_index] = individual.meta_data[i]
+        self.data = np.append(self.data, individual.data, axis=1)
+        if self.data.shape[1] != len(self.meta_data):
+            raise Exception("Mismatch found between data and its meta information.!")

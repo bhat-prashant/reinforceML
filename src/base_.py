@@ -6,6 +6,7 @@ import copy
 import multiprocessing
 import random
 
+import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 from deap import creator, base
@@ -133,21 +134,21 @@ class BaseFeatureEngineer:
             # Select the next generation individuals
             offspring = self._toolbox.select(self._pop, top=0.90)
 
-        #     for i in range(1, len(offspring), 2):
-        #         if random.random() < self._crossover_rate:
-        #             offspring[i] = self._toolbox.mate(offspring[i - 1], offspring[i])
-        #         # Slightly different from original algorithm
-        #         if random.random() < self._mutation_rate:
-        #             offspring[i] = self._toolbox.mutate(offspring[i])
-        #
-        #     for ind in offspring:
-        #         if not ind.features:
-        #             offspring.remove(ind)
-        #             continue
-        #         if ind.fitness == 0:
-        #             ind.fitness, ind.feature_importance = self._toolbox.evaluate(ind, self._y, scorer=self._scorer)
-        #
-        #     self._pop[:] = offspring
+            for i in range(1, len(offspring), 2):
+                if random.random() < self._crossover_rate:
+                    offspring[i] = self._toolbox.mate(offspring[i - 1], offspring[i])
+                # Slightly different from original algorithm
+                if random.random() < self._mutation_rate:
+                    offspring[i] = self._toolbox.mutate(offspring[i])
+
+            for ind in offspring:
+                if not ind.meta_data:
+                    offspring.remove(ind)
+                    continue
+                if ind.fitness == 0:
+                    ind.fitness, ind.feature_importance = self._toolbox.evaluate(ind, self._y, scorer=self._scorer)
+
+            self._pop[:] = offspring
         return sorted(self._pop, key=lambda x: x.fitness, reverse=True)[0]
 
     def fit(self, X, y):
@@ -159,5 +160,8 @@ class BaseFeatureEngineer:
 
     def transform(self):
         best_ind = self._evolve()
+        # Future Work: Combining all individual feature  graphs in to one image and saving it to file.
+        nx.draw(best_ind.meta_data[0]['ancestor_graph'], with_labels=True)
+        plt.show()
         print("Initial score : ", self._initial_score)
         print("Best Fitness : ", best_ind.fitness)
