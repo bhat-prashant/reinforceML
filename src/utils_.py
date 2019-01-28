@@ -10,3 +10,9 @@ TODO --
 3. creating a file with set of transformations to apply on particular feature. This should be 'readymade' to be consumed by the user
 
 '''
+import numpy as np
+
+def reshape_data(individual):
+    if individual.data.ndim == 1:
+        individual.data = np.reshape(individual.data, (individual.data.shape[0], 1))
+

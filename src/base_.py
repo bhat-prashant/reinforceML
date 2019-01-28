@@ -13,10 +13,10 @@ from deap import creator, base
 from sklearn.metrics import accuracy_score
 
 from data_ import validate_inputs
-from gp_ import mate, mutate, select, create_metadata, Individual
+from gp_ import mate, mutate, select, create_metadata, compose_graphs, Individual
 from metrics_ import evaluate, fitness_score
 from transformer_ import get_transformers, UnaryTransformer, BinaryTransformer, HigherOrderTransformer
-
+from constants import *
 
 class BaseFeatureEngineer:
     __slots__ = ['_generation', '_pop_size', '_mutation_rate', '_crossover_rate', '_scorer',
@@ -56,6 +56,12 @@ class BaseFeatureEngineer:
             np.random.seed(10)
             random.seed(10)
 
+    def _update_fitness(self, individual):
+        individual.fitness, feature_importance = \
+            evaluate(individual, self._y, scorer=self._scorer)
+        for k in range(len(feature_importance)):
+            individual.meta_data[k][F_IMP] = feature_importance[k]
+
     def _create_population(self):
         population = []
 
@@ -81,11 +87,8 @@ class BaseFeatureEngineer:
             if isinstance(trans, UnaryTransformer):
                 # Each individual has only one feature. Therefore, feat_imp is set to 1
                 new_individual = copy.deepcopy(population[i])
-                trans.transform(new_individual, indices=[0], node_names=[str(i)], feat_imp=1)
-                new_individual.fitness, feature_importance = \
-                    evaluate(new_individual, self._y, scorer=self._scorer)
-                for k in range(len(feature_importance)):
-                    new_individual.meta_data[k]['feature_importance'] = feature_importance[k]
+                trans.transform(individual=new_individual, index=0, feat_imp=1)
+                self._update_fitness(new_individual)
                 population.append(new_individual)
 
                 # Future Work: - Binary and higher order transform
@@ -145,8 +148,8 @@ class BaseFeatureEngineer:
                 if not ind.meta_data:
                     offspring.remove(ind)
                     continue
-                if ind.fitness == 0:
-                    ind.fitness, ind.feature_importance = self._toolbox.evaluate(ind, self._y, scorer=self._scorer)
+                if ind.fitness <= 0:
+                    self._update_fitness(ind)
 
             self._pop[:] = offspring
         return sorted(self._pop, key=lambda x: x.fitness, reverse=True)[0]
@@ -159,9 +162,13 @@ class BaseFeatureEngineer:
             self._fit_init()
 
     def transform(self):
-        best_ind = self._evolve()
+        top_individual = self._evolve()
         # Future Work: Combining all individual feature  graphs in to one image and saving it to file.
-        nx.draw(best_ind.meta_data[0]['ancestor_graph'], with_labels=True)
-        plt.show()
+        compose_graphs(top_individual)
+        if top_individual.transformation_graph is not None:
+            nx.draw(top_individual.transformation_graph, with_labels=True)
+            plt.show()
         print("Initial score : ", self._initial_score)
-        print("Best Fitness : ", best_ind.fitness)
+        print("Best Fitness : ", top_individual.fitness)
+
+

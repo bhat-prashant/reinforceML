@@ -4,7 +4,9 @@ __email__ = "PrashantShivaram@outlook.com"
 
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
-
+from utils_ import reshape_data
+from decorator_ import unary_decorator
+from constants import *
 
 class BaseTransformer:
     __slots__ = ['transformer', 'param_count', 'name']
@@ -38,18 +40,22 @@ class UnaryTransformer(BaseTransformer):
     # feat_imp is set default to -1 for newly transformed features. Their importance will be updated later during evaluation
     # indices and node_names should be iterables
     # This method makes changes to passed 'individual' and hence returns None
-    def transform(self, individual, indices, node_names, feat_imp=-1):
-        for index, node_name in zip(indices, node_names):
+    @unary_decorator
+    def transform(self, individual, index, feat_imp=-1):
+        try:
             if individual.data.ndim == 1:
                 individual.data = self.transformer(individual.data)
             else:
-                individual.data = self.transformer(individual.data[:, index])
+                individual.data[:, index] = self.transformer(individual.data[:, index])
+            reshape_data(individual)
+            node_name = individual.meta_data[index][N_NAME]
             new_node_name = self.name + '(' + node_name + ')'
-            individual.meta_data[index]['ancestor_graph'].add_node(str(new_node_name))
-            individual.meta_data[index]['ancestor_graph'].add_edge(node_name, new_node_name, transformer=self.name)
-            individual.meta_data[index]['node_name'] = new_node_name
-            individual.meta_data[index]['feature_importance'] = feat_imp
-
+            individual.meta_data[index][A_GRAPH].add_node(str(new_node_name))
+            individual.meta_data[index][A_GRAPH].add_edge(node_name, new_node_name, transformer=self.name)
+            individual.meta_data[index][N_NAME] = new_node_name
+            individual.meta_data[index][F_IMP] = feat_imp
+        except :
+            print('Unknown error while transforming a feature !')
 
 
 class BinaryTransformer(BaseTransformer):
@@ -98,5 +104,5 @@ def get_transformers():
     # transformers['division'] = BinaryTransformer(transformer=np.divide)
     # transformers['log'] = UnaryTransformer(transformer=np.log)
     # transformers['squareuare'] = UnaryTransformer(name='square', transformer=np.square)
-    transformers['square_root'] = UnaryTransformer(name='square_root', transformer=np.sqrt)
+    transformers[SQRT] = UnaryTransformer(name=SQRT, transformer=np.sqrt)
     return transformers

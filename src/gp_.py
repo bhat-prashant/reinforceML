@@ -3,9 +3,11 @@ __author__ = "Prashant Shivarm Bhat"
 __email__ = "PrashantShivaram@outlook.com"
 
 import random
-
 import numpy as np
+import networkx as nx
 
+from utils_ import reshape_data
+from constants import *
 
 # crossover / mate function for two individuals
 def mate(individual_1, individual_2, relevance=0.25):
@@ -14,8 +16,27 @@ def mate(individual_1, individual_2, relevance=0.25):
     # i.e Good 'looking' individuals should mate with other good 'looking' (accuracy) individuals
     offspring_1 = squeeze_individual(individual_1, relevance)
     offspring_2 = squeeze_individual(individual_2, relevance)
-    offspring_1.merge(offspring_2)
+    merge(offspring_1, offspring_2)
+    invalidate_fitness(offspring_1)
+    feature_selection(offspring_1)
     return offspring_1
+
+
+
+# After merging, fitness and feature_importance have been invalidated.
+# They will be recomputed later in BaseFeatureEngineer.evolve method
+def invalidate_fitness(individual):
+    individual.fitness = 0
+    for k in range(len(individual.meta_data)):
+        individual.meta_data[k][F_IMP] = -1
+
+
+
+# Find correlation and remove highly correlated features
+def feature_selection(individual, corr_threshold=0.70):
+    corr_coef = np.corrcoef(individual.data, rowvar=False)
+    pass
+
 
 
 # Extract subset of features which have importance greater than the threshold
@@ -24,7 +45,7 @@ def squeeze_individual(individual, relevance):
     meta_data = {}
     i = 0
     for key in individual.meta_data:
-        if individual.meta_data[key]['feature_importance'] > relevance:
+        if individual.meta_data[key][F_IMP] > relevance:
             indices.append(key)
             meta_data[i] = individual.meta_data[key]
             i = i + 1
@@ -35,6 +56,18 @@ def squeeze_individual(individual, relevance):
 
 
 
+# Useful tool for merging two offsprings during mating
+def merge(individual_1, individual_2):
+    insert_index = individual_1.data.shape[1]
+    for i in range(len(individual_2.meta_data)):
+        individual_1.meta_data[insert_index] = individual_2.meta_data[i]
+        insert_index = insert_index + 1
+    individual_1.data = np.append(individual_1.data, individual_2.data, axis=1)
+    if individual_1.data.shape[1] != len(individual_1.meta_data):
+        raise Exception("Mismatch found between data and its meta information.!")
+
+
+
 # Future Work: Reinforcement Learning
 def mutate(transformers, individual):
     key = random.choice(list(transformers.keys()))
@@ -42,13 +75,10 @@ def mutate(transformers, individual):
     # Example : Features are not compatible, Go out of bound after squaring many times etc.
     if transformers[key].param_count == 1:
         # Future Work: Do not apply UnaryTransformation on all features. select features 'intelligently'
-        node_names = []
-        indices = []
         for index in range(len(individual.meta_data)):
-            indices.append(index)
-            node_names.append(individual.meta_data[index]['node_name'])
-        transformers[key].transform(individual, indices, node_names)
+            transformers[key].transform(individual=individual, index=index, feat_imp=-1)
     return individual
+
 
 
 
@@ -65,6 +95,14 @@ def select(pop, top=0.80, lucky=0.05):
     return top_individuals
 
 
+def compose_graphs(individual):
+    if individual.meta_data:
+        F = individual.meta_data[0][A_GRAPH]
+        for i in range(1, len(individual.meta_data)):
+            G = individual.meta_data[i][A_GRAPH]
+            F = nx.compose(F, G)
+        individual.transformation_graph = F
+
 # meta_data should be of the form :
 # meta_data = { 'column_index' : {'node_name' : str() instance,
 #                                'feature_importance': float() instance between 0 and 1,
@@ -75,28 +113,21 @@ def create_metadata(indices, node_names, feature_importance, ancestor_graphs):
     # All four inputs should be iterables.
     metadata = {}
     for index, node_name, feat_imp, ancestor_graph in zip(indices, node_names, feature_importance, ancestor_graphs):
-        metadata[index] = {'node_name': node_name, 'feature_importance': feat_imp, 'ancestor_graph': ancestor_graph}
+        metadata[index] = {N_NAME: node_name, F_IMP: feat_imp, A_GRAPH: ancestor_graph}
     return metadata
 
 
-class Individual:
-    __slots__ = ['data', 'fitness', 'meta_data']
 
-    def __init__(self, data, meta_data, fitness=-1):
+
+class Individual:
+    __slots__ = ['data', 'fitness', 'meta_data', 'transformation_graph']
+
+    def __init__(self, data, meta_data, fitness=0):
         self.data = data
-        if self.data.ndim == 1:
-            self.data = np.reshape(self.data, (self.data.shape[0], 1))
         self.fitness = fitness
         self.meta_data = meta_data
+        self.transformation_graph = None
+        reshape_data(self)
 
-    def extract_features(self):
-        pass
 
-    # Useful tool for merging two offsprings during mating
-    def merge(self, individual):
-        insert_index = self.data.shape[1]
-        for i in range(len(individual.meta_data)):
-            self.meta_data[insert_index] = individual.meta_data[i]
-        self.data = np.append(self.data, individual.data, axis=1)
-        if self.data.shape[1] != len(self.meta_data):
-            raise Exception("Mismatch found between data and its meta information.!")
+
