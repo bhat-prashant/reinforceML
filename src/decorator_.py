@@ -7,25 +7,48 @@ __email__ = "PrashantShivaram@outlook.com"
 # check number of rows in a column. if they are not equal to original number of rows, discard
 import numpy as np
 from constants import *
+from utils_ import reshape_data
 
 def unary_decorator(func):
     def pre_post_check(*args, **kwargs):
         index = kwargs.get(INX)
-        transformer = args[0]
+        trans = args[0]
         individual = kwargs.get(IND)
         check_pass = False
 
         # Pre-check
-        if transformer.name == SQRT:
-            if not np.any(individual.data[:, index] < 0):
-                nodes = list(individual.meta_data[index][A_GRAPH])
-                if not [node for node in nodes if SQRT in node]:
-                    check_pass = True
+        if trans.name == LOG:
+            if not np.any(individual.data[:, index] <= 0):
+                check_pass = check_redundancy(individual, index, MATH_OPS)
 
+        if trans.name == SQR:
+            check_pass = check_redundancy(individual, index, MATH_OPS)
+
+        if trans.name == SQRT:
+            if not np.any(individual.data[:, index] < 0):
+                check_pass = check_redundancy(individual, index, MATH_OPS)
+
+        if trans.name == KBD:
+            check_pass = check_redundancy(individual, index, [KBD])
 
         if check_pass:
-            func(*args, **kwargs)
-            # Post-Check
+            data = func(*args, **kwargs)
+
+            # Post-processing
+            if trans.name == SQR or trans.name == SQRT or trans.name == LOG:
+                if not np.isnan(data).any() and not np.isinf(data).any():
+                    individual.data[:, index] = data[:, 0]
+            if trans.name == KBD:
+                individual.data[:, index] = data.indices
+
+            reshape_data(individual)
+
     return pre_post_check
 
 
+def check_redundancy(individual, index, trans_array):
+    nodes = list(individual.meta_data[index][A_GRAPH])
+    for node in nodes:
+        if [trans for trans in trans_array if trans in node]:
+            return False
+    return True

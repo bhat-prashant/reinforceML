@@ -13,6 +13,10 @@ TODO --
 import numpy as np
 
 def reshape_data(individual):
-    if individual.data.ndim == 1:
-        individual.data = np.reshape(individual.data, (individual.data.shape[0], 1))
+    individual.data = reshape_numpy(individual.data)
+
+def reshape_numpy(ndarray):
+    if ndarray.ndim == 1:
+        ndarray = np.reshape(ndarray, (ndarray.shape[0], 1))
+    return ndarray
 

@@ -4,7 +4,9 @@ __email__ = "PrashantShivaram@outlook.com"
 
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
-from utils_ import reshape_data
+from sklearn.preprocessing import KBinsDiscretizer
+
+
 from decorator_ import unary_decorator
 from constants import *
 
@@ -44,18 +46,18 @@ class UnaryTransformer(BaseTransformer):
     def transform(self, individual, index, feat_imp=-1):
         try:
             if individual.data.ndim == 1:
-                individual.data = self.transformer(individual.data)
+                data = self.transformer(individual.data)
             else:
-                individual.data[:, index] = self.transformer(individual.data[:, index])
-            reshape_data(individual)
+                data = self.transformer(individual.data[:, index:(index+1)])
             node_name = individual.meta_data[index][N_NAME]
             new_node_name = self.name + '(' + node_name + ')'
             individual.meta_data[index][A_GRAPH].add_node(str(new_node_name))
             individual.meta_data[index][A_GRAPH].add_edge(node_name, new_node_name, transformer=self.name)
             individual.meta_data[index][N_NAME] = new_node_name
             individual.meta_data[index][F_IMP] = feat_imp
-        except :
-            print('Unknown error while transforming a feature !')
+            return data
+        except Exception as e:
+            print('Unknown error while transforming a feature !', e)
 
 
 class BinaryTransformer(BaseTransformer):
@@ -102,7 +104,8 @@ def get_transformers():
     # transformers['subtract'] = BinaryTransformer(transformer=np.subtract)
     # transformers['multiply'] = BinaryTransformer(transformer=np.multiply)
     # transformers['division'] = BinaryTransformer(transformer=np.divide)
-    # transformers['log'] = UnaryTransformer(transformer=np.log)
-    # transformers['squareuare'] = UnaryTransformer(name='square', transformer=np.square)
+    transformers[LOG] = UnaryTransformer(name=LOG, transformer=np.log)
+    transformers[SQR] = UnaryTransformer(name=SQR, transformer=np.square)
     transformers[SQRT] = UnaryTransformer(name=SQRT, transformer=np.sqrt)
+    transformers[KBD] = UnaryTransformer(name=KBD, transformer=KBinsDiscretizer().fit_transform)
     return transformers

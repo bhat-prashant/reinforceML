@@ -10,7 +10,11 @@ F_IMP = 'feature_importance'
 A_GRAPH = 'ancestor_graph'
 
 # Unary Transformers
+SQR = 'square'
+LOG = 'log'
 SQRT = 'square_root'
+MATH_OPS = [LOG, SQR, SQRT]
+KBD = 'k_bins_discretizer'
 
 # General constants frequently used in the code
 INX = 'index'

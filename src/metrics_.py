@@ -3,12 +3,6 @@ __author__ = "Prashant Shivarm Bhat"
 __email__ = "PrashantShivaram@outlook.com"
 
 
-'''
-TODO --
-1. Linear model for assessing quality of dataset and quality of each chromosome / feature
-2. RandomForest with 500 estimators for initial and final evaluation
-3.
-'''
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
