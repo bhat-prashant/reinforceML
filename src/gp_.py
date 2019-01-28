@@ -35,6 +35,8 @@ def invalidate_fitness(individual):
 # Find correlation and remove highly correlated features
 def feature_selection(individual, corr_threshold=0.70):
     corr_coef = np.corrcoef(individual.data, rowvar=False)
+    if np.any(corr_coef > corr_threshold):
+        pass
     pass
 
 

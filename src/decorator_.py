@@ -16,14 +16,16 @@ def unary_decorator(func):
         check_pass = False
 
         # Pre-check
-        # if transformer.name == SQRT:
-        #     if not np.any(individual.data[:, index] < 0) and not individual.meta_data[index][A_GRAPH].has_node():
-        #         pass
+        if transformer.name == SQRT:
+            if not np.any(individual.data[:, index] < 0):
+                nodes = list(individual.meta_data[index][A_GRAPH])
+                if not [node for node in nodes if SQRT in node]:
+                    check_pass = True
 
 
-        # if check_pass:
-        func(*args, **kwargs)
-        # Post-Check
+        if check_pass:
+            func(*args, **kwargs)
+            # Post-Check
     return pre_post_check
 
 
