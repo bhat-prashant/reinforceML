@@ -135,7 +135,7 @@ class BaseFeatureEngineer:
         # Begin the generational process
         for gen in range(1, self._generation + 1):
             # Select the next generation individuals
-            offspring = self._toolbox.select(self._pop, top=0.99)
+            offspring = self._toolbox.select(self._pop, top=0.80)
 
             for i in range(1, len(offspring), 2):
                 if random.random() < self._crossover_rate:

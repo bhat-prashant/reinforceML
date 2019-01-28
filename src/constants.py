@@ -14,7 +14,12 @@ SQR = 'square'
 LOG = 'log'
 SQRT = 'square_root'
 MATH_OPS = [LOG, SQR, SQRT]
+
+# preprocessors
 KBD = 'k_bins_discretizer'
+MMS = 'min_max_scaler'
+MAS = 'max_abs_scaler'
+PRE_PROCESSORS = [KBD, MMS, MAS]
 
 # General constants frequently used in the code
 INX = 'index'

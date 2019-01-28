@@ -4,7 +4,7 @@ __email__ = "PrashantShivaram@outlook.com"
 
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.preprocessing import KBinsDiscretizer
+from sklearn.preprocessing import KBinsDiscretizer, MinMaxScaler, MaxAbsScaler
 
 
 from decorator_ import unary_decorator
@@ -104,8 +104,10 @@ def get_transformers():
     # transformers['subtract'] = BinaryTransformer(transformer=np.subtract)
     # transformers['multiply'] = BinaryTransformer(transformer=np.multiply)
     # transformers['division'] = BinaryTransformer(transformer=np.divide)
+    transformers[MAS] = UnaryTransformer(name=MAS, transformer=MaxAbsScaler().fit_transform)
+    transformers[MMS] = UnaryTransformer(name=MMS, transformer=MinMaxScaler().fit_transform)
+    transformers[KBD] = UnaryTransformer(name=KBD, transformer=KBinsDiscretizer().fit_transform)
     transformers[LOG] = UnaryTransformer(name=LOG, transformer=np.log)
     transformers[SQR] = UnaryTransformer(name=SQR, transformer=np.square)
     transformers[SQRT] = UnaryTransformer(name=SQRT, transformer=np.sqrt)
-    transformers[KBD] = UnaryTransformer(name=KBD, transformer=KBinsDiscretizer().fit_transform)
     return transformers

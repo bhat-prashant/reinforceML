@@ -28,8 +28,8 @@ def unary_decorator(func):
             if not np.any(individual.data[:, index] < 0):
                 check_pass = check_redundancy(individual, index, MATH_OPS)
 
-        if trans.name == KBD:
-            check_pass = check_redundancy(individual, index, [KBD])
+        if trans.name in PRE_PROCESSORS:
+            check_pass = check_redundancy(individual, index, PRE_PROCESSORS)
 
         if check_pass:
             data = func(*args, **kwargs)
@@ -40,6 +40,8 @@ def unary_decorator(func):
                     individual.data[:, index] = data[:, 0]
             if trans.name == KBD:
                 individual.data[:, index] = data.indices
+            if trans.name == MMS or trans.name == MAS:
+                individual.data[:, index] = data[:, 0]
 
             reshape_data(individual)
 
