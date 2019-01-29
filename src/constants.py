@@ -17,9 +17,13 @@ MATH_OPS = [LOG, SQR, SQRT]
 
 # preprocessors
 KBD = 'k_bins_discretizer'
+
+# scaler
+SS = 'standard_scaler'
+PCA_ = 'pca'
 MMS = 'min_max_scaler'
 MAS = 'max_abs_scaler'
-PRE_PROCESSORS = [KBD, MMS, MAS]
+SCALER = [SS, PCA_, MMS, MAS]
 
 # General constants frequently used in the code
 INX = 'index'

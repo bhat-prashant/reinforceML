@@ -18,7 +18,7 @@ def mate(individual_1, individual_2, relevance=0.25):
     offspring_2 = squeeze_individual(individual_2, relevance)
     merge(offspring_1, offspring_2)
     invalidate_fitness(offspring_1)
-    feature_selection(offspring_1)
+    filtering(offspring_1)
     return offspring_1
 
 
@@ -32,13 +32,18 @@ def invalidate_fitness(individual):
 
 
 
-# Find correlation and remove highly correlated features
-def feature_selection(individual, corr_threshold=0.70):
-    corr_coef = np.corrcoef(individual.data, rowvar=False)
-    if np.any(corr_coef > corr_threshold):
-        pass
+# Future Work: Find correlation and remove highly correlated features
+# IMPORTANT : Care has to be taken about updating indices of metadata accordingly when a particular feature is removed
+def filtering(individual, corr_threshold=0.70):
     pass
-
+    # indices = []
+    # for i in range(len(individual.meta_data)):
+    #     for j in range(i+1, len(individual.meta_data)):
+    #         if set(individual.meta_data[i][A_GRAPH]) == set(individual.meta_data[j][A_GRAPH]):
+    #             indices.append(j)
+    # for index in indices:
+    #     del individual.meta_data[index]
+    #     individual.data = np.delete(individual.data, index, axis=1)
 
 
 # Extract subset of features which have importance greater than the threshold
@@ -96,7 +101,8 @@ def select(pop, top=0.80, lucky=0.05):
     top_individuals.extend(lucky_individuals)
     return top_individuals
 
-
+# combining individual feature graphs into one final graph
+# This is used at the end of evolution to show how top_individual evolved
 def compose_graphs(individual):
     if individual.meta_data:
         F = individual.meta_data[0][A_GRAPH]
@@ -104,6 +110,8 @@ def compose_graphs(individual):
             G = individual.meta_data[i][A_GRAPH]
             F = nx.compose(F, G)
         individual.transformation_graph = F
+
+
 
 # meta_data should be of the form :
 # meta_data = { 'column_index' : {'node_name' : str() instance,
@@ -128,6 +136,7 @@ class Individual:
         self.data = data
         self.fitness = fitness
         self.meta_data = meta_data
+        # final graph composed of all individual feature graphs
         self.transformation_graph = None
         reshape_data(self)
 

@@ -15,7 +15,7 @@ y = data.target
 # Future Work: Regression. For now, only binary classification is supported
 # For now, use only numerical inputs and outputs.
 # Future Work: Preprocessing is prending such as handling categorical, datetime etc.
-feat = FeatureEngineer(pop_size=100, generation=5, random_state=10)
+feat = FeatureEngineer(pop_size=40, generation=10, random_state=10)
 feat.fit(X, y)
 feat.transform()
 

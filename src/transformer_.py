@@ -4,10 +4,11 @@ __email__ = "PrashantShivaram@outlook.com"
 
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.preprocessing import KBinsDiscretizer, MinMaxScaler, MaxAbsScaler
+from sklearn.preprocessing import KBinsDiscretizer, MinMaxScaler, MaxAbsScaler, StandardScaler
+from sklearn.decomposition import PCA
 
 
-from decorator_ import unary_decorator
+from decorator_ import unary_decorator, universal_decorator
 from constants import *
 
 class BaseTransformer:
@@ -40,8 +41,7 @@ class UnaryTransformer(BaseTransformer):
         super(UnaryTransformer, self).__init__(transformer, param_count, name)
 
     # feat_imp is set default to -1 for newly transformed features. Their importance will be updated later during evaluation
-    # indices and node_names should be iterables
-    # This method makes changes to passed 'individual' and hence returns None
+    # See decorator for pre and post processing
     @unary_decorator
     def transform(self, individual, index, feat_imp=-1):
         try:
@@ -68,6 +68,18 @@ class BinaryTransformer(BaseTransformer):
 class HigherOrderTransformer(BaseTransformer):
     def __init__(self, name, transformer, param_count=None):
         super(HigherOrderTransformer, self).__init__(transformer, param_count, name)
+
+
+class UniversalTransformer(BaseTransformer):
+    def __init__(self, name, transformer, param_count=None):
+        super(UniversalTransformer, self).__init__(transformer, param_count, name)
+
+    # See decorator for pre and post processing
+    @universal_decorator
+    def transform(self, individual):
+        data = self.transformer(individual.data)
+        return data
+
 
 
 class OneHotEncoder(BaseEstimator, TransformerMixin):
@@ -98,16 +110,19 @@ class OneHotEncoder(BaseEstimator, TransformerMixin):
         return R
 
 # Future Work : Add all possible transformers.
-def get_transformers():
+def get_unary_transformers():
     transformers = dict()
-    # transformers['add'] = BinaryTransformer(transformer=np.add)
-    # transformers['subtract'] = BinaryTransformer(transformer=np.subtract)
-    # transformers['multiply'] = BinaryTransformer(transformer=np.multiply)
-    # transformers['division'] = BinaryTransformer(transformer=np.divide)
-    transformers[MAS] = UnaryTransformer(name=MAS, transformer=MaxAbsScaler().fit_transform)
-    transformers[MMS] = UnaryTransformer(name=MMS, transformer=MinMaxScaler().fit_transform)
     transformers[KBD] = UnaryTransformer(name=KBD, transformer=KBinsDiscretizer().fit_transform)
     transformers[LOG] = UnaryTransformer(name=LOG, transformer=np.log)
     transformers[SQR] = UnaryTransformer(name=SQR, transformer=np.square)
     transformers[SQRT] = UnaryTransformer(name=SQRT, transformer=np.sqrt)
+    return transformers
+
+
+def get_universal_transformers():
+    transformers = dict()
+    transformers[MAS] = UniversalTransformer(name=MAS, transformer=MaxAbsScaler().fit_transform)
+    transformers[MMS] = UniversalTransformer(name=MMS, transformer=MinMaxScaler().fit_transform)
+    transformers[SS] = UniversalTransformer(name=SS, transformer=StandardScaler().fit_transform)
+    transformers[PCA_] = UniversalTransformer(name=PCA_, transformer=PCA().fit_transform)
     return transformers

@@ -15,18 +15,19 @@ from sklearn.metrics import accuracy_score
 from data_ import validate_inputs
 from gp_ import mate, mutate, select, create_metadata, compose_graphs, Individual
 from metrics_ import evaluate, fitness_score
-from transformer_ import get_transformers, UnaryTransformer, BinaryTransformer, HigherOrderTransformer
+from transformer_ import get_unary_transformers, get_universal_transformers, \
+    UnaryTransformer, BinaryTransformer, HigherOrderTransformer
 from constants import *
 
 class BaseFeatureEngineer:
     __slots__ = ['_generation', '_pop_size', '_mutation_rate', '_crossover_rate', '_scorer',
                  '_upsample', '_downsample', '_subsample', '_random_state', '_verbosity',
-                 '_feature_count', '_chromosome_count', '_pop', '_transformers', '_pool',
-                 '_toolbox', '_initial_score', '_X', '_y']
+                 '_feature_count', '_chromosome_count', '_pop', '_unary_transformers', '_universal_transformers',
+                 '_pool', '_toolbox', '_initial_score', '_X', '_y', 'append_original']
 
     def __init__(self, generation=5, pop_size=None, mutation_rate=0.3,
                  crossover_rate=0.7, scorer=accuracy_score, upsample=False,
-                 downsample=False, random_state=None, verbosity=0, subsample=True):
+                 downsample=False, random_state=None, verbosity=0, subsample=True, append_original=True):
         self._generation = generation
         self._pop_size = pop_size
         self._mutation_rate = mutation_rate
@@ -41,11 +42,13 @@ class BaseFeatureEngineer:
         self._initial_score = None
         self._chromosome_count = None
         self._pop = None
-        self._transformers = get_transformers()
+        self._unary_transformers = get_unary_transformers()
+        self._universal_transformers = get_universal_transformers()
         self._pool = multiprocessing.Pool()
         self._toolbox = None
         self._X = None
         self._y = None
+        self.append_original = append_original
 
     def _set_random_state(self):
         if self._random_state is not None:
@@ -81,14 +84,14 @@ class BaseFeatureEngineer:
             # Future Work: Intelligently select transformations in the beginning based
             # on feature's meta information like datetime etc
             # Future Work: Initially, features with lesser 'importance' can be transformed first
-            key = random.choice(list(self._transformers.keys()))
-            trans = self._transformers[key]
+            key = random.choice(list(self._unary_transformers.keys()))
+            trans = self._unary_transformers[key]
 
             if isinstance(trans, UnaryTransformer):
                 # Each individual has only one feature. Therefore, feat_imp is set to 1
                 new_individual = copy.deepcopy(population[i])
-                trans.transform(individual=new_individual, index=0, feat_imp=1)
-                self._update_fitness(new_individual)
+                # trans.transform(individual=new_individual, index=0, feat_imp=1)
+                # self._update_fitness(new_individual)
                 population.append(new_individual)
 
                 # Future Work: - Binary and higher order transform
@@ -117,7 +120,7 @@ class BaseFeatureEngineer:
         self._toolbox.register("evaluate", evaluate)
         self._toolbox.register("mate", mate)
         self._toolbox.register("map", self._pool.map)
-        self._toolbox.register("mutate", mutate, self._transformers)
+        self._toolbox.register("mutate", mutate, self._unary_transformers)
         self._toolbox.register("select", select)
 
     def _fit_init(self):
@@ -152,7 +155,7 @@ class BaseFeatureEngineer:
                     self._update_fitness(ind)
 
             self._pop[:] = offspring
-        return sorted(self._pop, key=lambda x: x.fitness, reverse=True)[0]
+        return sorted(self._pop, key=lambda x: x.fitness, reverse=True)[:3]
 
     def fit(self, X, y):
         self._set_random_state()
@@ -161,14 +164,46 @@ class BaseFeatureEngineer:
             self._y = y
             self._fit_init()
 
-    def transform(self):
-        top_individual = self._evolve()
-        # Future Work: Combining all individual feature  graphs in to one image and saving it to file.
-        compose_graphs(top_individual)
-        if top_individual.transformation_graph is not None:
-            nx.draw(top_individual.transformation_graph, with_labels=True)
-            plt.show()
+    def _append_to_original(self, top_individual):
+        # Future Work: When original features are appended with transformed ones, update transformation_graph accordingly
         print("Initial score : ", self._initial_score)
-        print("Best Fitness : ", top_individual.fitness)
+        # append original data
+        top_individual.data = np.append(top_individual.data, self._X, axis=1)
+        top_individual.fitness, fea_imp = fitness_score(top_individual.data, self._y)
+        # add meta_data and update feature importance
+        meta_length = len(top_individual.meta_data)
+        for j in range(0, self._X.shape[1]):
+            G = nx.DiGraph()
+            G.add_node(str(j))
+            top_individual.meta_data[meta_length + j] = {N_NAME: str(j), F_IMP: fea_imp[j], A_GRAPH: G }
+        for k in range(meta_length):
+            top_individual.meta_data[k][F_IMP] = fea_imp[k]
+
+
+
+        for key in self._universal_transformers:
+            data = self._universal_transformers[key].transform(individual=top_individual)
+            fitness, _ = fitness_score(data, self._y)
+            if fitness > top_individual.fitness:
+                top_individual.fitness = fitness
+        if not top_individual.transformation_graph is None:
+            print("Universal Transformation :", top_individual.transformation_graph.nodes)
+        print("Best Fitness : ", top_individual.fitness, '\n')
+
+
+    def transform(self):
+        # Future Work: Implement Universal Transformers
+        # Future Work : Check PCA, Standard scaler as universal transformers at the end.
+        top_individuals = self._evolve()
+        for top_individual in top_individuals:
+            if self.append_original:
+                self._append_to_original(top_individual)
+            else:
+                compose_graphs(top_individual)
+                if top_individual.transformation_graph is not None:
+                    nx.draw(top_individual.transformation_graph, with_labels=True)
+                    plt.show()
+                print("Initial score : ", self._initial_score)
+                print("Best Fitness : ", top_individual.fitness, '\n')
 
 
