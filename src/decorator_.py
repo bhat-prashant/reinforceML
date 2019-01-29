@@ -45,27 +45,18 @@ def unary_decorator(func):
 def universal_decorator(func):
     def universal_check(*args, **kwargs):
         individual = kwargs.get(IND)
-        # This condition checks whether universal transformation has been applied before.
-        if individual.transformation_graph is None:
-            check_pass = True
-        else:
-            check_pass = check_universal_redundancy(individual, SCALER)
+        # Precheck
+        #---
 
-        if check_pass:
-            # apply transformation if check_pass is True
-            data = func(*args, **kwargs)
-            return data
+        # apply transformation if check_pass is True
+        data = func(*args, **kwargs)
+
+        # post processing
+        # ---
+
+        return data
 
     return universal_check
-
-
-def check_universal_redundancy(individual, trans_array):
-    nodes = list(individual.transformation_graph)
-    for node in nodes:
-        if [trans for trans in trans_array if trans in node]:
-            return False
-    return True
-
 
 def check_unary_redundancy(individual, index, trans_array):
     nodes = list(individual.meta_data[index][A_GRAPH])

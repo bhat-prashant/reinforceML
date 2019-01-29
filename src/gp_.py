@@ -9,17 +9,21 @@ import networkx as nx
 from utils_ import reshape_data
 from constants import *
 
+
+
 # crossover / mate function for two individuals
-def mate(individual_1, individual_2, relevance=0.25):
-    # Retain features with importance more than the relevance and merge two individuals.
+def mate(individual_1, individual_2):
+    # Retain features with importance more than the average relevance and merge two individuals.
     # Future Work : come up with 'intelligent' mating technique. Mating between individuals should be based on the 'attraction'
     # i.e Good 'looking' individuals should mate with other good 'looking' (accuracy) individuals
-    offspring_1 = squeeze_individual(individual_1, relevance)
-    offspring_2 = squeeze_individual(individual_2, relevance)
+    offspring_1 = squeeze_individual(individual_1)
+    offspring_2 = squeeze_individual(individual_2)
     merge(offspring_1, offspring_2)
     invalidate_fitness(offspring_1)
     filtering(offspring_1)
     return offspring_1
+
+
 
 
 
@@ -29,6 +33,8 @@ def invalidate_fitness(individual):
     individual.fitness = 0
     for k in range(len(individual.meta_data)):
         individual.meta_data[k][F_IMP] = -1
+
+
 
 
 
@@ -46,24 +52,41 @@ def filtering(individual, corr_threshold=0.70):
     #     individual.data = np.delete(individual.data, index, axis=1)
 
 
+
+
+
 # Extract subset of features which have importance greater than the threshold
-def squeeze_individual(individual, relevance):
+# Can be used independently as a feature extractor
+def squeeze_individual(individual):
     indices = []
     meta_data = {}
+
+    # find average feature importance with initial seed zero
+    avg_imp = [0]
+    for key in individual.meta_data:
+        avg_imp.append(individual.meta_data[key][F_IMP])
+    avg_imp = np.mean(avg_imp)
+
+    # remove features with importance less than average importance
     i = 0
     for key in individual.meta_data:
-        if individual.meta_data[key][F_IMP] > relevance:
+        if individual.meta_data[key][F_IMP] >= avg_imp:
             indices.append(key)
             meta_data[i] = individual.meta_data[key]
             i = i + 1
     data = individual.data[:, indices]
+
+    # if there's a mismatch between data and meta_data
     if data.shape[1] != len(meta_data):
         raise Exception("Mismatch found between data and its meta information.!")
     return Individual(data, meta_data)
 
 
 
+
+
 # Useful tool for merging two offsprings during mating
+# Combines two individuals
 def merge(individual_1, individual_2):
     insert_index = individual_1.data.shape[1]
     for i in range(len(individual_2.meta_data)):
@@ -75,7 +98,10 @@ def merge(individual_1, individual_2):
 
 
 
+
+
 # Future Work: Reinforcement Learning
+# Mutate/ Transform an individual with unary, binary / higher order transforms
 def mutate(transformers, individual):
     key = random.choice(list(transformers.keys()))
     # Future Work : Decorators for pre and post sanity check
@@ -85,6 +111,8 @@ def mutate(transformers, individual):
         for index in range(len(individual.meta_data)):
             transformers[key].transform(individual=individual, index=index, feat_imp=-1)
     return individual
+
+
 
 
 
@@ -101,6 +129,8 @@ def select(pop, top=0.80, lucky=0.05):
     top_individuals.extend(lucky_individuals)
     return top_individuals
 
+
+
 # combining individual feature graphs into one final graph
 # This is used at the end of evolution to show how top_individual evolved
 def compose_graphs(individual):
@@ -110,6 +140,8 @@ def compose_graphs(individual):
             G = individual.meta_data[i][A_GRAPH]
             F = nx.compose(F, G)
         individual.transformation_graph = F
+
+
 
 
 
