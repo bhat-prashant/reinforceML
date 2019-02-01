@@ -4,7 +4,7 @@ __email__ = "PrashantShivaram@outlook.com"
 
 
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 
@@ -12,7 +12,7 @@ from gp_ import Individual
 
 
 # Test accuracy , feature importance
-def fitness_score(X, y, estimator=RandomForestClassifier(n_estimators=100),
+def fitness_score(X, y, estimator=GradientBoostingClassifier(n_estimators=1),
                   score=accuracy_score):
     if X.ndim == 1:
         np.reshape(X, (X.shape[0], 1))

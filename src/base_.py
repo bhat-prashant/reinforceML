@@ -5,31 +5,33 @@ __email__ = "PrashantShivaram@outlook.com"
 import copy
 import multiprocessing
 import random
-
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-from deap import creator, base
+from deap import creator, base, tools, algorithms
 from sklearn.metrics import accuracy_score
+from collections import Counter
 
 from data_ import validate_inputs
-from gp_ import mate, mutate, select, create_metadata, compose_graphs, squeeze_individual, Individual
+from gp_ import mate, mutate, select, merge, create_metadata, compose_graphs, squeeze_individual, Individual
 from metrics_ import evaluate, fitness_score
 from transformer_ import get_unary_transformers, get_universal_transformers, \
-    UnaryTransformer, BinaryTransformer, HigherOrderTransformer
+    UnaryTransformer, BinaryTransformer, HigherOrderTransformer, UniversalTransformer
 from constants import *
+from sampler import SubSampler
+
 
 class BaseFeatureEngineer:
     __slots__ = ['_generation', '_pop_size', '_mutation_rate', '_crossover_rate', '_scorer',
                  '_upsample', '_downsample', '_subsample', '_random_state', '_verbosity',
                  '_feature_count', '_chromosome_count', '_pop', '_unary_transformers', '_universal_transformers',
-                 '_pool', '_toolbox', '_initial_score', '_X', '_y', 'append_original']
+                 '_pool', '_toolbox', '_initial_score', '_X', '_y', 'append_original', 'merge_toppers']
 
 
 
     def __init__(self, generation=5, pop_size=None, mutation_rate=0.3,
                  crossover_rate=0.7, scorer=accuracy_score, upsample=False,
-                 downsample=False, random_state=None, verbosity=0, subsample=True, append_original=True):
+                 downsample=False, random_state=None, verbosity=0, subsample=None, append_original=True):
         self._generation = generation
         self._pop_size = pop_size
         self._mutation_rate = mutation_rate
@@ -37,6 +39,8 @@ class BaseFeatureEngineer:
         self._scorer = scorer
         self._upsample = upsample
         self._downsample = downsample
+        # if subsample=None, no subsampling is done. if its between 0 and 1,
+        #  that much amount of original data is used in reinforceML
         self._subsample = subsample
         self._random_state = random_state
         self._verbosity = verbosity
@@ -51,10 +55,21 @@ class BaseFeatureEngineer:
         self._X = None
         self._y = None
         self.append_original = append_original
+        # merge top performing individuals at the end of evolution
+        self.merge_toppers = True
+
+    # subsample if user provides with subsampling rate (between 0 and 1)
+    def _check_subsampling(self):
+        if self._subsample is not None:
+            if 0 < self._subsample < 1:
+                subsample = SubSampler(size=self._subsample)
+                self._X, self._y = subsample.sample(self._X, self._y)
+                print('Sub-sampling is enabled!. Dataset target distribution after sampling %s' % Counter(self._y))
 
 
-
+    # set random seed of both nupy and random
     def _set_random_state(self):
+        pass
         if self._random_state is not None:
             np.random.seed(self._random_state)
             random.seed(self._random_state)
@@ -64,7 +79,7 @@ class BaseFeatureEngineer:
             random.seed(10)
 
 
-
+    # Update fitness after every generation during evolution
     def _update_fitness(self, individual):
         individual.fitness, feature_importance = \
             evaluate(individual, self._y, scorer=self._scorer)
@@ -72,7 +87,7 @@ class BaseFeatureEngineer:
             individual.meta_data[k][F_IMP] = feature_importance[k]
 
 
-    # method to create individuals in bulk
+    # method to create individuals in bulk (Building initial population)
     def _create_population(self):
         population = []
 
@@ -145,6 +160,9 @@ class BaseFeatureEngineer:
         # initial accuracy on the given dataset
         self._initial_score, _ = fitness_score(self._X, self._y)
 
+        # check if subsampling is necessary
+        self._check_subsampling()
+
         # setup toolbox for evolution
         self._setup_toolbox()
 
@@ -190,7 +208,11 @@ class BaseFeatureEngineer:
         # return top 3 individuals
         return sorted(self._pop, key=lambda x: x.fitness, reverse=True)[:3]
 
-
+    def _evolve_DEAP(self):
+        hof = tools.HallOfFame(3)
+        stats = tools.Statistics(lambda ind: ind.fitness.values)
+        self._pop, log = algorithms.eaSimple(self._pop, self._toolbox, cxpb=0.5, mutpb=0.2, ngen=2,
+                                       stats=stats, halloffame=hof, verbose=True)
 
     def fit(self, X, y):
         self._set_random_state()
@@ -198,6 +220,7 @@ class BaseFeatureEngineer:
         if validate_inputs(X, y):
             self._X = X
             self._y = y
+            print('Dataset target distribution %s' % Counter(y))
             self._fit_init()
 
 
@@ -241,29 +264,24 @@ class BaseFeatureEngineer:
                 top_individual.meta_data[index][A_GRAPH].add_edge(node_name, trans_name, transformer=trans_name)
 
         # display results
-        self._compose_display(top_individual)
+        compose_graphs(top_individual)
         print("Best Fitness : ", top_individual.fitness, '\n')
 
-
-
-    # Combine individual feature graphs and display it as a final transformation_graph
-    def _compose_display(self, individual):
-        compose_graphs(individual)
-        if individual.transformation_graph is not None:
-            nx.draw(individual.transformation_graph, with_labels=True)
-            plt.show()
-
+    def _merge_top_individuals(self, individual_1, individual_2):
+        merge(individual_1, individual_1)
+        self._update_fitness(individual_1)
 
 
     def transform(self):
         top_individuals = self._evolve()
         for top_individual in top_individuals:
             # If you would like to combine original feature set with transformed set
-            if self.append_original:
+            if self.append_original and not self.merge_toppers:
                 self._append_to_original(top_individual)
             else:
-                self._compose_display(top_individual)
+                compose_graphs(top_individual)
                 print("Initial score : ", self._initial_score)
                 print("Best Fitness : ", top_individual.fitness, '\n')
+
 
 

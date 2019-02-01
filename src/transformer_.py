@@ -4,7 +4,8 @@ __email__ = "PrashantShivaram@outlook.com"
 
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.preprocessing import KBinsDiscretizer, MinMaxScaler, MaxAbsScaler, StandardScaler
+from sklearn.preprocessing import KBinsDiscretizer, MinMaxScaler, \
+    MaxAbsScaler, StandardScaler, KernelCenterer
 from sklearn.decomposition import PCA
 
 
@@ -124,5 +125,6 @@ def get_universal_transformers():
     transformers[MAS] = UniversalTransformer(name=MAS, transformer=MaxAbsScaler().fit_transform)
     transformers[MMS] = UniversalTransformer(name=MMS, transformer=MinMaxScaler().fit_transform)
     transformers[SS] = UniversalTransformer(name=SS, transformer=StandardScaler().fit_transform)
+    transformers[KC] = UniversalTransformer(name=KC, transformer=KernelCenterer().fit_transform)
     transformers[PCA_] = UniversalTransformer(name=PCA_, transformer=PCA().fit_transform)
     return transformers

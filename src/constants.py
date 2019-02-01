@@ -23,7 +23,8 @@ SS = 'standard_scaler'
 PCA_ = 'pca'
 MMS = 'min_max_scaler'
 MAS = 'max_abs_scaler'
-SCALER = [SS, PCA_, MMS, MAS]
+KC = 'kernel_centerer'
+SCALER = [SS, PCA_, MMS, MAS, KC]
 
 # General constants frequently used in the code
 INX = 'index'

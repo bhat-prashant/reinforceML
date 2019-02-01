@@ -2,6 +2,9 @@
 __author__ = "Prashant Shivarm Bhat"
 __email__ = "PrashantShivaram@outlook.com"
 
+from sklearn.exceptions import DataConversionWarning
+import warnings
+warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 
 from base_ import BaseFeatureEngineer
 

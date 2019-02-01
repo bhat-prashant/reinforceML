@@ -8,7 +8,7 @@ import networkx as nx
 
 from utils_ import reshape_data
 from constants import *
-
+import matplotlib.pyplot as plt
 
 
 # crossover / mate function for two individuals
@@ -20,7 +20,7 @@ def mate(individual_1, individual_2):
     offspring_2 = squeeze_individual(individual_2)
     merge(offspring_1, offspring_2)
     invalidate_fitness(offspring_1)
-    filtering(offspring_1)
+    # filtering(offspring_1)
     return offspring_1
 
 
@@ -140,6 +140,9 @@ def compose_graphs(individual):
             G = individual.meta_data[i][A_GRAPH]
             F = nx.compose(F, G)
         individual.transformation_graph = F
+    if individual.transformation_graph is not None:
+        nx.draw(individual.transformation_graph, with_labels=True)
+        plt.show()
 
 
 
