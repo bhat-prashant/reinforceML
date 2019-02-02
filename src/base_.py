@@ -40,7 +40,7 @@ class BaseFeatureEngineer:
         np.random.seed(10)
         self._pset = gp.PrimitiveSetTyped('MAIN', [np.ndarray], Output_Array)
         self._pset.renameArguments(ARG0='input_matrix')
-        trans_lookup = get_lookup()
+        trans_lookup = get_lookup(self._feature_count)
 
         # add transformers as primitives
         for key in trans_lookup:
@@ -66,7 +66,7 @@ class BaseFeatureEngineer:
             creator.create('Individual', gp.PrimitiveTree, fitness=creator.FitnessMulti, statistics=dict)
 
         self._toolbox = base.Toolbox()
-        self._toolbox.register('expr', grow_individual, pset=self._pset, min_=1, max_=3)
+        self._toolbox.register('expr', grow_individual, pset=self._pset, min_=1, max_=5)
         self._toolbox.register('individual', tools.initIterate, creator.Individual, self._toolbox.expr)
         self._toolbox.register('population', tools.initRepeat, list, self._toolbox.individual)
         # self._toolbox.register('compile', self._compile_to_sklearn)
@@ -86,7 +86,10 @@ class BaseFeatureEngineer:
         self._setup_pset()
 
         # create population
-        # self._pop = self._toolbox.population()
+        self._setup_toolbox()
+        self._pop = self._toolbox.population(100)
+
+        pass
 
 
 
