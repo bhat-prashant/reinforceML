@@ -74,8 +74,7 @@ class BaseFeatureEngineer:
         # self._toolbox.register('mate', self._mate_operator)
         # self._toolbox.register('expr_mut', self._gen_grow_safe, min_=1, max_=4)
         # self._toolbox.register('mutate', self._random_mutation_operator)
-
-
+        
     # Initialization steps
     def _fit_init(self):
         self._feature_count = self._X.shape[1]
