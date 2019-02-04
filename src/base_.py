@@ -10,14 +10,16 @@ import numpy as np
 from deap import creator, base, tools
 from deap import gp
 from sklearn.metrics import accuracy_score
+from copy import deepcopy
 
 from gp_ import grow_individual
 from lookup import get_lookup
 from metrics_ import fitness_score
 from transformer import TransformerClassGenerator, Output_Array
+from sklearn.base import BaseEstimator
+from sklearn.preprocessing import KBinsDiscretizer, StandardScaler
 
-
-class BaseFeatureEngineer:
+class BaseFeatureEngineer(BaseEstimator):
 
     def __init__(self, generation=5, pop_size=None, mutation_rate=0.3,
                  crossover_rate=0.7, scorer=accuracy_score, upsample=False,
@@ -66,15 +68,90 @@ class BaseFeatureEngineer:
             creator.create('Individual', gp.PrimitiveTree, fitness=creator.FitnessMulti, statistics=dict)
 
         self._toolbox = base.Toolbox()
-        self._toolbox.register('expr', grow_individual, pset=self._pset, min_=1, max_=5)
+        self._toolbox.register('expr', grow_individual, pset=self._pset, min_=1, max_=8)
         self._toolbox.register('individual', tools.initIterate, creator.Individual, self._toolbox.expr)
         self._toolbox.register('population', tools.initRepeat, list, self._toolbox.individual)
-        # self._toolbox.register('compile', self._compile_to_sklearn)
-        # self._toolbox.register('select', tools.selNSGA2)
+        self._toolbox.register('compile', self._compile_pipeline)
+        self._toolbox.register('select', tools.selNSGA2)
         # self._toolbox.register('mate', self._mate_operator)
         # self._toolbox.register('expr_mut', self._gen_grow_safe, min_=1, max_=4)
         # self._toolbox.register('mutate', self._random_mutation_operator)
-        
+
+    def _compile_pipeline(self, individual):
+        input_matrix = deepcopy(self._X)
+        target = self._y
+        height  = individual.height - 1 # start from first primitive
+        arg_pos = individual.height + 1 # start from first argument after input_matrix for the above primitive
+
+        # for every primitive transformer, do
+        while height >= 0:
+            # get primitive class
+            trans_class = self._pset.context[individual[height].name]
+            args = {}
+
+            # get corresponding arguments
+            for arg_type in trans_class.arg_types:
+                args[arg_type.name] = self._pset.context[individual[arg_pos].name]
+                arg_pos = arg_pos + 1
+
+            # apply transformation based on package name
+            if trans_class.package == 'sklearn':
+                if trans_class.root:
+                    # apply universal operator
+                    try:
+                        operator = trans_class.transformer(**args)
+                        input_matrix = operator.fit_transform(input_matrix)
+                    except Exception as e:
+                        # Future Work: Remove operator from the individual as it cannot be applied
+                        pass
+                else:
+                    # Unary operator
+                    # separate argument starting with 'index'
+                    index = None
+                    for k in list(args):
+                        if k.startswith('index'):
+                            index = args.pop(k)
+                    if index is not None:
+                        operator = trans_class.transformer(**args)
+                        input_matrix[:, index] = self._apply_sklearn_operator(operator, input_matrix, [index])
+
+            elif trans_class.package == 'numpy':
+                operator = trans_class.transformer
+                indices = list(args.values())
+                input_matrix[:, indices] =  self._apply_numpy_operator(operator, input_matrix, indices)
+
+
+            height = height - 1
+        pass
+
+
+    # sklearn operator manipulation
+    def _apply_sklearn_operator(self, operator, in_matrix, indices):
+        if isinstance(operator, KBinsDiscretizer):
+            # Future Work: Take care of convergence warning, User warning
+            try:
+                data = operator.fit_transform(in_matrix[:, indices[0]:indices[0] + 1])
+                return data.indices
+            except Exception as e:
+                # Future Work: Remove operator from the individual as it cannot be applied
+                return in_matrix[:, indices[0]]
+
+
+    # numpy operator manipulation
+    # Future Work: Handle run time warnings (especially for log transformation)
+    def _apply_numpy_operator(self, operator, in_matrix, indices):
+            try:
+                # Generalized for any number of inputs (i.e unary, binary or higher order numpy transformer)
+                data = in_matrix[:, indices]
+                data = operator(*np.split(data, data.shape[1], axis=1))
+                if np.isnan(data).any() or np.isinf(data).any():
+                    raise Exception
+                return data
+            except Exception as e:
+                # Future Work: Remove operator from the individual as it cannot be applied
+                return in_matrix[:, indices]
+
+
     # Initialization steps
     def _fit_init(self):
         self._feature_count = self._X.shape[1]
@@ -89,6 +166,8 @@ class BaseFeatureEngineer:
         self._setup_toolbox()
         self._pop = self._toolbox.population(100)
 
+        for ind in self._pop:
+            self._compile_pipeline(individual=ind)
         pass
 
 

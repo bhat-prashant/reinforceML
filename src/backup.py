@@ -13,5 +13,7 @@ y = data.target
 
 from reinforce_ import FeatureEngineer
 
-feat = FeatureEngineer()
+feat = FeatureEngineer(pop_size=100)
 feat.fit(X, y)
+
+

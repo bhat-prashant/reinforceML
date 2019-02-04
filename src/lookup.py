@@ -16,37 +16,61 @@ def empty_transformer(*args):
 def get_lookup(X_col):
     # X_col - number of features / columns in the original dataset
     trans_lookup = {
-        'EmptyTransformer': {'source': empty_transformer,
+        'EmptyTransformer': {'package' : 'other',
+                             'transformer': empty_transformer,
                              'root': True,
                              'params': {}
                              },
-        'KBinsDiscretizer': {'source': KBinsDiscretizer,
+        'KBinsDiscretizer': {'package' : 'sklearn',
+                             'transformer': KBinsDiscretizer,
                              'root': False,
                              'params': {
-                                 'KBinsDiscretizer_strategy': ['uniform', 'quantile', 'kmeans'],
-                                 'KBinsDiscretizer_n_bins': [3, 5, 7, 10, 15, 20, 30]}
+                                 'strategy': ['uniform', 'quantile', 'kmeans'],
+                                 'n_bins': [3, 5, 7, 10, 15, 20, 30],
+                                 'index0': np.arange(0, X_col, 1)}
                              },
-        'StandardScaler': {'source': StandardScaler,
+        'StandardScaler': {'package' : 'sklearn',
+                           'transformer': StandardScaler,
                            'root': True,
-                           'params': {'StandardScaler_with_mean': [True, False],
-                                      'StandardScaler_with_std': [True, False]}
+                           'params': {'with_mean': [True, False],
+                                      'with_std': [True, False]}
                            },
-        'PCA': {'source': PCA,
+        'PCA': {'package' : 'sklearn',
+                'transformer': PCA,
                 'root': True,
-                'params': {'PCA_n_components': np.arange(1, X_col, 1),
-                           'PCA_whiten': [True, False],
-                           'PCA_svd_solver': ['auto', 'full', 'arpack', 'randomized']}
+                'params': {'n_components': np.arange(1, X_col, 1),
+                           'whiten': [True, False],
+                           'svd_solver': ['auto', 'full', 'arpack', 'randomized']}
                 },
-        'Add': {'source': np.add,
+        'Add': {'package' : 'numpy',
+                'transformer': np.add,
                 'root': False,
-                'params': {'Add_index0': np.arange(0, X_col, 1),
-                           'Add_index1': np.arange(0, X_col, 1)}
+                'params': {'index0': np.arange(0, X_col, 1),
+                           'index1': np.arange(0, X_col, 1)}
                 },
-        'Subtract': {'source': np.add,
+        'Subtract': {'package' : 'numpy',
+                     'transformer': np.subtract,
                      'root': False,
-                     'params': {'Subtract_index0': np.arange(0, X_col, 1),
-                                'Subtract_index1': np.arange(0, X_col, 1)}
+                     'params': {'index0': np.arange(0, X_col, 1),
+                                'index1': np.arange(0, X_col, 1)}
                      },
+        'Multiply': {'package': 'numpy',
+                     'transformer': np.multiply,
+                     'root': False,
+                     'params': {'index0': np.arange(0, X_col, 1),
+                                'index1': np.arange(0, X_col, 1)}
+                     },
+        'Divide': {'package': 'numpy',
+                     'transformer': np.divide,
+                     'root': False,
+                     'params': {'index0': np.arange(0, X_col, 1),
+                                'index1': np.arange(0, X_col, 1)}
+                     },
+        'Log': {'package': 'numpy',
+                   'transformer': np.log,
+                   'root': False,
+                   'params': {'index0': np.arange(0, X_col, 1) }
+                   },
 
     }
 
