@@ -4,6 +4,7 @@ __email__ = "PrashantShivaram@outlook.com"
 
 import numpy as np
 from sklearn.preprocessing import KBinsDiscretizer
+from sklearn.decomposition import PCA
 
 
 def reshape_data(individual):
@@ -15,32 +16,14 @@ def reshape_numpy(ndarray):
         ndarray = np.reshape(ndarray, (ndarray.shape[0], 1))
     return ndarray
 
-# sklearn operator manipulation
-def _apply_sklearn_operator(operator, in_matrix, indices):
-    if isinstance(operator, KBinsDiscretizer):
-        # Future Work: Take care of convergence warning, User warning
-        try:
-            data = operator.fit_transform(in_matrix[:, indices[0]:indices[0] + 1])
-            return data.indices
-        except Exception as e:
-            # Future Work: Remove operator from the individual as it cannot be applied
-            return in_matrix[:, indices[0]]
+def operator_precheck(operator, input_matrix, **kwargs):
+    if isinstance(operator, PCA):
+        if kwargs['n_components'] > input_matrix.shape[1]:
+            kwargs['n_components'] = input_matrix.shape[1] - 1
+            operator = PCA(**kwargs)
+        return operator, input_matrix
 
-
-# numpy operator manipulation
-# Future Work: Handle run time warnings (especially for log transformation)
-def _apply_numpy_operator(operator, in_matrix, indices):
-    try:
-        # Generalized for any number of inputs (i.e unary, binary or higher order numpy transformer)
-        data = in_matrix[:, indices]
-        data = operator(*np.split(data, data.shape[1], axis=1))
-        if np.isnan(data).any() or np.isinf(data).any():
-            raise Exception
-        return data
-    except Exception as e:
-        # Future Work: Remove operator from the individual as it cannot be applied
-        return in_matrix[:, indices]
-
+    return operator, input_matrix
 
 
 

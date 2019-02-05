@@ -4,5 +4,15 @@
     <inspection_tool class="PyPep8Inspection" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
     <inspection_tool class="PyPep8NamingInspection" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
     <inspection_tool class="PyProtocolInspection" enabled="true" level="ERROR" enabled_by_default="true" />
+    <inspection_tool class="PyUnresolvedReferencesInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredIdentifiers">
+        <list>
+          <option value="deap.creator.FitnessMulti" />
+          <option value="deap.creator.Individual" />
+          <option value="deap.base.Toolbox.expr" />
+          <option value="deap.base.Toolbox.individual" />
+        </list>
+      </option>
+    </inspection_tool>
   </profile>
 </component>

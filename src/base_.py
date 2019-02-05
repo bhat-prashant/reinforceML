@@ -13,10 +13,10 @@ from sklearn.metrics import accuracy_score
 from copy import deepcopy
 
 from gp_ import grow_individual
-from utils_ import _apply_numpy_operator, _apply_sklearn_operator
+from utils_ import operator_precheck
 from lookup import TransformerLookUp
 from metrics_ import fitness_score
-from transformer import TransformerClassGenerator, Output_Array
+from transformer import TransformerClassGenerator, ScaledArray, SelectedArray, ExtractedArray
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
@@ -41,26 +41,32 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
     def _setup_pset(self):
         random.seed(10)
         np.random.seed(10)
-        self._pset = gp.PrimitiveSetTyped('MAIN', [np.ndarray], Output_Array)
+        self._pset = gp.PrimitiveSetTyped('MAIN', [np.ndarray], ExtractedArray)
         self._pset.renameArguments(ARG0='input_matrix')
-        trans_types = ['unary', 'scaler', '']
-        trans_lookup = get_lookup(self._feature_count)
+        trans_types = ['unary', 'scaler', 'selector', 'extractor']
+        lookup = TransformerLookUp(self._feature_count)
+        for type_ in trans_types:
+            trans_lookup = lookup.get_lookup(type_)
 
-        # add transformers as primitives
-        for key in trans_lookup:
-            transformer = TransformerClassGenerator(key, trans_lookup[key])
-            if transformer.root:
-                self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, Output_Array)
-            else:
-                self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, np.ndarray)
+            # add transformers as primitives
+            for key in trans_lookup:
+                transformer = TransformerClassGenerator(key, trans_lookup[key])
+                if type_ == 'unary':
+                    self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, np.ndarray)
+                elif type_ == 'scaler':
+                    self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, ScaledArray)
+                elif type_ == 'selector':
+                    self._pset.addPrimitive(transformer, [ScaledArray] + transformer.arg_types, SelectedArray)
+                elif type_ == 'extractor':
+                    self._pset.addPrimitive(transformer, [SelectedArray] + transformer.arg_types, ExtractedArray)
 
-            # add transformer arguments as terminal
-            # arg_types is a list
-            for arg in transformer.arg_types:
-                values = list(arg.values)
-                for val in values:
-                    arg_name = arg.__name__ + "=" + str(val)
-                    self._pset.addTerminal(val, arg, name=arg_name)
+                # add transformer arguments as terminal
+                # arg_types is a list
+                for arg in transformer.arg_types:
+                    values = list(arg.values)
+                    for val in values:
+                        arg_name = arg.__name__ + "=" + str(val)
+                        self._pset.addTerminal(val, arg, name=arg_name)
 
 
     def _setup_toolbox(self):
@@ -99,46 +105,21 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
                 arg_pos = arg_pos + 1
 
             # apply transformation based on package name
-            if trans_class.package == 'sklearn':
-                if trans_class.root:
-                    # apply universal operator
-                    try:
-                        operator = trans_class.transformer(**args)
-                        input_matrix = operator.fit_transform(input_matrix)
-                    except Exception as e:
-                        # Future Work: Remove operator from the individual as it cannot be applied
-                        pass
-                else:
-                    # Unary operator
-                    # separate argument starting with 'index'
-                    index = None
-                    for k in list(args):
-                        if k.startswith('index'):
-                            index = args.pop(k)
-                    if index is not None:
-                        operator = trans_class.transformer(**args)
-                        input_matrix[:, index] = _apply_sklearn_operator(operator, input_matrix, [index])
-
-            elif trans_class.package == 'numpy':
-                operator = trans_class.transformer
-                indices = list(args.values())
-                data =  _apply_numpy_operator(operator, input_matrix, indices)
-                input_matrix = np.append(input_matrix, data, axis=1)
-
-            elif trans_class.package == 'empty':
-                # Do nothing if its a empty operator
-                # Usefulness: some times it is wise to retain original features!
-                pass
-
-            else:
-                pass
-
+            try:
+                operator = trans_class.transformer(**args)
+                operator, input_matrix = operator_precheck(operator, input_matrix, **args)
+                input_matrix = operator.fit_transform(input_matrix, y=self._y)
+            except Exception as e:
+                print(e)
             # Start from most basic primitive and move up the tree towards root / universal primitive
             height = height - 1
 
         # evaluate individual
-        fitness, _ = fitness_score(input_matrix, self._y)
-        print(fitness)
+        try:
+            fitness, _ = fitness_score(input_matrix, self._y)
+        except:
+            fitness = 0
+        print(fitness, ' : ', individual)
 
 
 
@@ -150,6 +131,7 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
 
         # initial accuracy on the given dataset
         self._initial_score, _ = fitness_score(self._X, self._y)
+        print('Initial Best score : ', self._initial_score)
 
         # setup toolbox for evolution
         self._setup_pset()
@@ -158,10 +140,9 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
         self._setup_toolbox()
         self._pop = self._toolbox.population(100)
 
-        for i in range(0, len(self._pop), 2):
-            tools.cxUniform(self._pop[i], self._pop[i+1], 0.4)
-            # self._evaluate_individual(individual=ind)
-        print(self._initial_score)
+        for ind in self._pop:
+            self._evaluate_individual(individual=ind)
+
 
 
 

@@ -5,9 +5,9 @@ import time
 
 start = time.time()
 
-from sklearn.datasets import load_wine
+from sklearn.datasets import load_digits
 
-data = load_wine()
+data = load_digits()
 X = data.data
 y = data.target
 
