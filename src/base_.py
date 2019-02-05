@@ -5,19 +5,19 @@ __email__ = "PrashantShivaram@outlook.com"
 import random
 import warnings
 from collections import Counter
+from copy import deepcopy
 
 import numpy as np
 from deap import creator, base, tools
 from deap import gp
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.metrics import accuracy_score
-from copy import deepcopy
+from sklearn.pipeline import make_pipeline
 
 from gp_ import grow_individual
-from utils_ import operator_precheck
 from lookup import TransformerLookUp
 from metrics_ import fitness_score
 from transformer import TransformerClassGenerator, ScaledArray, SelectedArray, ExtractedArray
-from sklearn.base import BaseEstimator, TransformerMixin
 
 
 class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
@@ -79,20 +79,16 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
         self._toolbox.register('expr', grow_individual, pset=self._pset, min_=1, max_=8)
         self._toolbox.register('individual', tools.initIterate, creator.Individual, self._toolbox.expr)
         self._toolbox.register('population', tools.initRepeat, list, self._toolbox.individual)
-        self._toolbox.register('evaluate', self._evaluate_individual)
+        self._toolbox.register('evaluate', self._evaluate)
         self._toolbox.register('select', tools.selNSGA2)
-        self._toolbox.register('mate', tools.cxOrdered)
+        # self._toolbox.register('mate', tools.cxOrdered)
         # self._toolbox.register('expr_mut', self._gen_grow_safe, min_=1, max_=4)
         # self._toolbox.register('mutate', self._random_mutation_operator)
 
-
-
-    def _evaluate_individual(self, individual):
-        input_matrix = deepcopy(self._X)
-        target = self._y
+    def _compile_to_sklearn(self, individual):
         height  = individual.height - 1 # start from first primitive
         arg_pos = individual.height + 1 # start from first argument after input_matrix for the above primitive
-
+        pipeline = []
         # for every primitive transformer, do
         while height >= 0:
             # get primitive class
@@ -104,25 +100,23 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
                 args[arg_type.name] = self._pset.context[individual[arg_pos].name]
                 arg_pos = arg_pos + 1
 
-            # apply transformation based on package name
-            try:
-                operator = trans_class.transformer(**args)
-                operator, input_matrix = operator_precheck(operator, input_matrix, **args)
-                input_matrix = operator.fit_transform(input_matrix, y=self._y)
-            except Exception as e:
-                print(e)
+            operator = trans_class.transformer(**args)
+            pipeline.append(operator)
             # Start from most basic primitive and move up the tree towards root / universal primitive
             height = height - 1
+        return make_pipeline(*pipeline)
 
-        # evaluate individual
+    def _evaluate(self, individual):
+        input_matrix = deepcopy(self._X)
+        target = self._y
+        pipeline = self._compile_to_sklearn(individual=individual)
         try:
-            fitness, _ = fitness_score(input_matrix, self._y)
-        except:
-            fitness = 0
-        print(fitness, ' : ', individual)
-
-
-
+            input_matrix = pipeline.fit_transform(input_matrix, target)
+            fitness, _ = fitness_score(input_matrix, target)
+            individual.fitness.values = fitness,
+        # Future Work: Handle these exceptions
+        except Exception as e:
+            individual.fitness.values = 0,
 
 
     # Initialization steps
@@ -140,8 +134,10 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
         self._setup_toolbox()
         self._pop = self._toolbox.population(100)
 
+        # Future Work: Some of these ind are taking too much time. Inspect why!
         for ind in self._pop:
-            self._evaluate_individual(individual=ind)
+            self._evaluate(individual=ind)
+            print(ind.fitness.values, ' : ', ind)
 
 
 
