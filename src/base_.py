@@ -13,13 +13,14 @@ from sklearn.metrics import accuracy_score
 from copy import deepcopy
 
 from gp_ import grow_individual
-from lookup import get_lookup
+from utils_ import _apply_numpy_operator, _apply_sklearn_operator
+from lookup import TransformerLookUp
 from metrics_ import fitness_score
 from transformer import TransformerClassGenerator, Output_Array
-from sklearn.base import BaseEstimator
-from sklearn.preprocessing import KBinsDiscretizer, StandardScaler
+from sklearn.base import BaseEstimator, TransformerMixin
 
-class BaseFeatureEngineer(BaseEstimator):
+
+class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
 
     def __init__(self, generation=5, pop_size=None, mutation_rate=0.3,
                  crossover_rate=0.7, scorer=accuracy_score, upsample=False,
@@ -42,6 +43,7 @@ class BaseFeatureEngineer(BaseEstimator):
         np.random.seed(10)
         self._pset = gp.PrimitiveSetTyped('MAIN', [np.ndarray], Output_Array)
         self._pset.renameArguments(ARG0='input_matrix')
+        trans_types = ['unary', 'scaler', '']
         trans_lookup = get_lookup(self._feature_count)
 
         # add transformers as primitives
@@ -71,13 +73,15 @@ class BaseFeatureEngineer(BaseEstimator):
         self._toolbox.register('expr', grow_individual, pset=self._pset, min_=1, max_=8)
         self._toolbox.register('individual', tools.initIterate, creator.Individual, self._toolbox.expr)
         self._toolbox.register('population', tools.initRepeat, list, self._toolbox.individual)
-        self._toolbox.register('compile', self._compile_pipeline)
+        self._toolbox.register('evaluate', self._evaluate_individual)
         self._toolbox.register('select', tools.selNSGA2)
-        # self._toolbox.register('mate', self._mate_operator)
+        self._toolbox.register('mate', tools.cxOrdered)
         # self._toolbox.register('expr_mut', self._gen_grow_safe, min_=1, max_=4)
         # self._toolbox.register('mutate', self._random_mutation_operator)
 
-    def _compile_pipeline(self, individual):
+
+
+    def _evaluate_individual(self, individual):
         input_matrix = deepcopy(self._X)
         target = self._y
         height  = individual.height - 1 # start from first primitive
@@ -113,43 +117,31 @@ class BaseFeatureEngineer(BaseEstimator):
                             index = args.pop(k)
                     if index is not None:
                         operator = trans_class.transformer(**args)
-                        input_matrix[:, index] = self._apply_sklearn_operator(operator, input_matrix, [index])
+                        input_matrix[:, index] = _apply_sklearn_operator(operator, input_matrix, [index])
 
             elif trans_class.package == 'numpy':
                 operator = trans_class.transformer
                 indices = list(args.values())
-                input_matrix[:, indices] =  self._apply_numpy_operator(operator, input_matrix, indices)
+                data =  _apply_numpy_operator(operator, input_matrix, indices)
+                input_matrix = np.append(input_matrix, data, axis=1)
 
+            elif trans_class.package == 'empty':
+                # Do nothing if its a empty operator
+                # Usefulness: some times it is wise to retain original features!
+                pass
 
+            else:
+                pass
+
+            # Start from most basic primitive and move up the tree towards root / universal primitive
             height = height - 1
-        pass
+
+        # evaluate individual
+        fitness, _ = fitness_score(input_matrix, self._y)
+        print(fitness)
 
 
-    # sklearn operator manipulation
-    def _apply_sklearn_operator(self, operator, in_matrix, indices):
-        if isinstance(operator, KBinsDiscretizer):
-            # Future Work: Take care of convergence warning, User warning
-            try:
-                data = operator.fit_transform(in_matrix[:, indices[0]:indices[0] + 1])
-                return data.indices
-            except Exception as e:
-                # Future Work: Remove operator from the individual as it cannot be applied
-                return in_matrix[:, indices[0]]
 
-
-    # numpy operator manipulation
-    # Future Work: Handle run time warnings (especially for log transformation)
-    def _apply_numpy_operator(self, operator, in_matrix, indices):
-            try:
-                # Generalized for any number of inputs (i.e unary, binary or higher order numpy transformer)
-                data = in_matrix[:, indices]
-                data = operator(*np.split(data, data.shape[1], axis=1))
-                if np.isnan(data).any() or np.isinf(data).any():
-                    raise Exception
-                return data
-            except Exception as e:
-                # Future Work: Remove operator from the individual as it cannot be applied
-                return in_matrix[:, indices]
 
 
     # Initialization steps
@@ -166,9 +158,10 @@ class BaseFeatureEngineer(BaseEstimator):
         self._setup_toolbox()
         self._pop = self._toolbox.population(100)
 
-        for ind in self._pop:
-            self._compile_pipeline(individual=ind)
-        pass
+        for i in range(0, len(self._pop), 2):
+            tools.cxUniform(self._pop[i], self._pop[i+1], 0.4)
+            # self._evaluate_individual(individual=ind)
+        print(self._initial_score)
 
 
 

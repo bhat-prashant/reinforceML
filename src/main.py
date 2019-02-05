@@ -17,5 +17,5 @@ y = data.target
 
 from tpot import TPOTClassifier
 
-tpo = TPOTClassifier(population_size=5, generations=3)
+tpo = TPOTClassifier(population_size=100, generations=3)
 tpo.fit(X, y)

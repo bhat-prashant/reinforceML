@@ -11,11 +11,12 @@ from sklearn.model_selection import train_test_split
 
 
 # Test accuracy , feature importance
-def fitness_score(X, y, estimator=GradientBoostingClassifier(n_estimators=1),
+# Future Work: Feature selection - covariance, varianceThreshold, selectFromModel etc. (sklearn.feature_selection)
+def fitness_score(X, y, estimator=GradientBoostingClassifier(n_estimators=1, random_state=10),
                   score=accuracy_score):
     if X.ndim == 1:
         np.reshape(X, (X.shape[0], 1))
-    X_train, X_test, y_train, y_test = train_test_split(X, y)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=10)
     estimator.fit(X_train, y_train)
     y_pred = estimator.predict(X_test)
     reward = score(y_test, y_pred)
