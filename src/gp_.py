@@ -59,7 +59,43 @@ def grow_individual(pset, min_=3, max_=8):
         terminal = np.random.choice(pset.terminals[arg_type])
         individual.append(terminal)
 
-
     # individual as a list (iterable)
     return individual
+
+
+def mate(ind_1, ind_2):
+    return ind_1, ind_2
+
+def mutate(ind):
+    return ind,
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

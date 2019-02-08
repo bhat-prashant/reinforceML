@@ -30,4 +30,3 @@ def operator_precheck(operator, input_matrix, **kwargs):
 
 
 
-

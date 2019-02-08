@@ -35,13 +35,13 @@ class TransformerLookUp:
 
     def _create_transformers(self):
         self._unary_transformers = {
-            'KBinsDiscretizer': {
-                'transformer': KBinsDiscretizerReinforce,
-                'params': {
-                    'strategy': ['uniform', 'quantile', 'kmeans'],
-                    'n_bins': [3, 5, 7, 10, 15, 20, 30],
-                    'index0': np.arange(0, self._X_col, 1)}
-            },
+            # 'KBinsDiscretizer': {
+            #     'transformer': KBinsDiscretizerReinforce,
+            #     'params': {
+            #         'strategy': ['uniform', 'quantile'],
+            #         'n_bins': [3, 5, 7, 10, 15, 20, 30],
+            #         'index0': np.arange(0, self._X_col, 1)}
+            # },
             # 'AddNumpy': {
             #     'transformer': AddReinforce,
             #     'params': {'index0': np.arange(0, self._X_col, 1),
@@ -51,7 +51,11 @@ class TransformerLookUp:
             #     'transformer': SubtractReinforce,
             #     'params': {'index0': np.arange(0, self._X_col, 1),
             #                'index1': np.arange(0, self._X_col, 1)}
-            # }
+            # },
+            'EmptyUnary': {
+                'transformer': EmptyTransformer,
+                'params': {}
+            }
         }
 
         self._universal_scalers = {
@@ -119,29 +123,14 @@ class TransformerLookUp:
                 'params': {'score_func': [chi2, f_classif],
                            'percentile': np.arange(int(self._X_col / 2), self._X_col - 1, 1)}
             },
-    
-            'SelectFpr': {
-                'transformer': SelectFpr,
-                'params': {'score_func': [chi2, f_classif]}
-            },
-    
-            'SelectFdr': {
-                'transformer': SelectFdr,
-                'params': {'score_func': [chi2, f_classif]}
-            },
-    
-            'SelectFwe': {
-                'transformer': SelectFwe,
-                'params': {'score_func': [chi2, f_classif]}
-            },
-    
             'RFE': {
                 'transformer': RFE,
                 'params': {'estimator': [RandomForestClassifier(n_estimators=10, random_state=10),
                                          GradientBoostingClassifier(n_estimators=10, random_state=10)],
                            'n_features_to_select': np.arange(int(self._X_col / 2), self._X_col - 1, 1)}
             },
-    
+
+            # bit slower than expected. Could be commented out to speed up operations
             'RFECV': {
                 'transformer': RFECV,
                 'params': {'estimator': [RandomForestClassifier(n_estimators=10, random_state=10),
@@ -149,11 +138,12 @@ class TransformerLookUp:
                            'min_features_to_select': np.arange(int(self._X_col / 2), self._X_col - 1, 1),
                            'cv': [3, 5, 7]}
             },
-    
+
             'VarianceThreshold': {
                 'transformer': VarianceThreshold,
                 'params': {'threshold': [0.0, 0.1, 0.2, 0.3, 0.4]}
             },
+
             'EmptySelector': {
                 'transformer': EmptyTransformer,
                 'params': {}
