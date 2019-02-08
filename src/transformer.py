@@ -4,6 +4,8 @@ __email__ = "PrashantShivaram@outlook.com"
 
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import KBinsDiscretizer
+from sklearn.decomposition import PCA
+
 import numpy as np
 from utils_ import reshape_numpy
 
@@ -31,7 +33,7 @@ class BaseTransformer(object):
 
 
 # Base class for numpy operators
-class BaseNumpyTransformer(BaseEstimator, TransformerMixin):
+class BaseReinforceTransformer(BaseEstimator, TransformerMixin):
     def __init__(self, *args, **kwargs):
         self.args = kwargs
 
@@ -41,7 +43,7 @@ class BaseNumpyTransformer(BaseEstimator, TransformerMixin):
 
 
 # add operation using numpy.add
-class AddReinforce(BaseNumpyTransformer):
+class AddReinforce(BaseReinforceTransformer):
     def transform(self, X, y=None):
         i_0 = self.args['index0']
         i_1 = self.args['index1']
@@ -51,7 +53,7 @@ class AddReinforce(BaseNumpyTransformer):
 
 
 # subtract operation using numpy.subtract
-class SubtractReinforce(BaseNumpyTransformer):
+class SubtractReinforce(BaseReinforceTransformer):
     def transform(self, X, y=None):
         i_0 = self.args['index0']
         i_1 = self.args['index1']
@@ -61,19 +63,30 @@ class SubtractReinforce(BaseNumpyTransformer):
 
 
 # KBinsDiscretizer
-class KBinsDiscretizerReinforce(BaseNumpyTransformer):
+class KBinsDiscretizerReinforce(BaseReinforceTransformer):
     def transform(self, X, y=None):
         i_0 = self.args['index0']
         strategy = self.args['strategy']
         n_bins = self.args['n_bins']
         transformed_X = KBinsDiscretizer(n_bins=n_bins, strategy=strategy).fit_transform(X[:, i_0:i_0+1])
         transformed_X.indices = reshape_numpy(transformed_X.indices)
+        # transformed column is appended to input_matrix
         return np.append(X, transformed_X.indices, axis=1)
 
+# PCA - This is a workaround when n_components is greater than no.of features due to feature selection before.
+class PCAReinforce(BaseReinforceTransformer):
+    def transform(self, X, y=None):
+        n_components = self.args['n_components']
+        whiten = self.args['whiten']
+        svd_solver = self.args['svd_solver']
+        if n_components > X.shape[1]:
+            n_components = X.shape[1]-1
+        transformed_X = PCA(n_components=n_components, whiten=whiten, svd_solver=svd_solver).fit_transform(X, y)
+        return transformed_X
 
 
 # Does nothing!
-class EmptyTransformer(BaseNumpyTransformer):
+class EmptyTransformer(BaseReinforceTransformer):
     def transform(self, X, y=None, **kwargs):
         return X
 

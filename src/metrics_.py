@@ -12,7 +12,7 @@ from sklearn.model_selection import train_test_split
 
 # Test accuracy , feature importance
 # Future Work: Feature selection - covariance, varianceThreshold, selectFromModel etc. (sklearn.feature_selection)
-def fitness_score(X, y, estimator=RandomForestClassifier(n_estimators=1, random_state=10),
+def fitness_score(X, y, estimator=RandomForestClassifier(n_estimators=500, random_state=10, n_jobs=-1),
                   score=accuracy_score):
     if X.ndim == 1:
         np.reshape(X, (X.shape[0], 1))

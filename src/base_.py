@@ -73,8 +73,8 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
     def _setup_toolbox(self):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
-            creator.create('FitnessMax', base.Fitness, weights=(1.0,))
-            creator.create('Individual', gp.PrimitiveTree, fitness=creator.FitnessMax, statistics=dict)
+            creator.create('FitnessMulti', base.Fitness, weights=(1.0,-1.0))
+            creator.create('Individual', gp.PrimitiveTree, fitness=creator.FitnessMulti, statistics=dict)
 
         self._toolbox = base.Toolbox()
         self._toolbox.register('expr', grow_individual, pset=self._pset, min_=1, max_=8)
@@ -122,21 +122,18 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
         f.close()
 
 
-
-
     def _evaluate(self, individual):
-        print('Evaluating Individual :', individual)
         input_matrix = deepcopy(self._X)
         target = self._y
         pipeline = self._compile_to_sklearn(individual=individual)
         try:
             input_matrix = pipeline.fit_transform(input_matrix, target)
             fitness, _ = fitness_score(input_matrix, target)
-            return fitness,
+            return fitness,individual.height
         # Future Work: Handle these exceptions
         except Exception as e:
             print(e)
-            return 0,
+            return 0,individual.height
 
     def _evolve(self):
         print('Start of evolution')
@@ -173,9 +170,6 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
         self._pop = self._toolbox.population(self._pop_size)
 
         self._evolve()
-
-
-
 
 
 

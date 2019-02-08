@@ -10,10 +10,7 @@ from sklearn.datasets import load_digits
 data = load_digits()
 X = data.data
 y = data.target
-# import pandas as pd
-# dataset = pd.read_csv('poker.csv', header=None)
-# X = dataset.iloc[:, :10].values
-# y = dataset.iloc[:, 10].values
+
 
 from reinforce_ import FeatureEngineer
 
