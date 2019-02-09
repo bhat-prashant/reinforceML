@@ -5,16 +5,16 @@ import time
 
 start = time.time()
 
-from sklearn.datasets import load_digits
+from sklearn.datasets import load_breast_cancer
 
-data = load_digits()
+data = load_breast_cancer()
 X = data.data
 y = data.target
 
 
 from reinforce_ import FeatureEngineer
 
-feat = FeatureEngineer(pop_size=10)
+feat = FeatureEngineer(pop_size=4)
 pipeline = feat.fit(X, y)
 X = pipeline.fit_transform(X, y)
 

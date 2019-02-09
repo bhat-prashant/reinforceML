@@ -32,7 +32,7 @@ class BaseTransformer(object):
     arg_types = None
 
 
-# Base class for numpy operators
+# Wrapper class for non sklearn estimators and estimators whose parameters have to be tweaked dynamically(Ex: PCA)
 class BaseReinforceTransformer(BaseEstimator, TransformerMixin):
     def __init__(self, *args, **kwargs):
         self.args = kwargs
@@ -79,7 +79,7 @@ class PCAReinforce(BaseReinforceTransformer):
         n_components = self.args['n_components']
         whiten = self.args['whiten']
         svd_solver = self.args['svd_solver']
-        if n_components > X.shape[1]:
+        if n_components >= X.shape[1]:
             n_components = X.shape[1]-1
         transformed_X = PCA(n_components=n_components, whiten=whiten, svd_solver=svd_solver).fit_transform(X, y)
         return transformed_X

@@ -82,9 +82,9 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
         self._toolbox.register('population', tools.initRepeat, list, self._toolbox.individual)
         self._toolbox.register('evaluate', self._evaluate)
         self._toolbox.register('select', tools.selNSGA2)
-        self._toolbox.register('mate', tools.cxOnePoint)
+        self._toolbox.register('mate', mate)
         # self._toolbox.register('expr_mut', self._gen_grow_safe, min_=1, max_=4)
-        self._toolbox.register('mutate', mutate)
+        self._toolbox.register('mutate', mutate, self._pset)
 
     def _compile_to_sklearn(self, individual):
         height  = individual.height - 1 # start from first primitive
@@ -138,15 +138,13 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
 
     def _evolve(self):
         print('Start of evolution')
-        for ind in self._pop:
-            self._evaluate(ind)
         self._hof = tools.HallOfFame(3)
         stats = tools.Statistics(lambda ind: ind.fitness.values)
         stats.register("avg", np.mean)
         stats.register("std", np.std)
         stats.register("min", np.min)
         stats.register("max", np.max)
-        pop, log = algorithms.eaSimple(self._pop, self._toolbox, cxpb=0.5, mutpb=0.2, ngen=2,
+        pop, log = algorithms.eaSimple(self._pop, self._toolbox, cxpb=0.1, mutpb=0.9, ngen=2,
                                        stats=stats, halloffame=self._hof, verbose=True)
         # Future Work: Export Hall of Fame individuals' sklearn-pipeline to a file
         self._solution_to_file()

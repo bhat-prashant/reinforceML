@@ -4,6 +4,7 @@ __email__ = "PrashantShivaram@outlook.com"
 
 import numpy as np
 from transformer import ScaledArray, SelectedArray, ExtractedArray
+from copy import deepcopy
 
 
 # Future Work : Write decorator for checking whether generated individual is valid
@@ -60,12 +61,24 @@ def grow_individual(pset, min_=3, max_=8):
     # individual as a list (iterable)
     return individual
 
-
+# mating two individuals during evolution
 def mate(ind_1, ind_2):
     return ind_1, ind_2
 
-def mutate(ind):
-    return ind,
+# mutate an individual during evolution by randomly replacing parameters
+# Future Work : allow individual to grow, shrink during mutation
+def mutate(pset, ind):
+    individual = deepcopy(ind)
+    # always ind[height] represents input_matrix
+    pos = individual.height + 1         # terminal position
+    idx = individual.height -1          # primitive position
+    while idx >= 0:
+        for arg_type in individual[idx].args[1:]:
+            # pick a random parameter and replace
+            individual[pos] = np.random.choice(pset.terminals[arg_type])
+            pos += 1
+        idx -= 1
+    return individual,
 
 
 
