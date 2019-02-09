@@ -82,7 +82,7 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
         self._toolbox.register('population', tools.initRepeat, list, self._toolbox.individual)
         self._toolbox.register('evaluate', self._evaluate)
         self._toolbox.register('select', tools.selNSGA2)
-        self._toolbox.register('mate', mate)
+        self._toolbox.register('mate', tools.cxOnePoint)
         # self._toolbox.register('expr_mut', self._gen_grow_safe, min_=1, max_=4)
         self._toolbox.register('mutate', mutate)
 
@@ -134,6 +134,7 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
         except Exception as e:
             print(e)
             return 0,individual.height
+
 
     def _evolve(self):
         print('Start of evolution')

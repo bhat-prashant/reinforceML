@@ -47,14 +47,12 @@ def grow_individual(pset, min_=3, max_=8):
 
     selector = np.random.choice(pset.primitives[SelectedArray])
     individual = [selector] + individual
-    # np.ndarray is included only if it was not included before
     for arg_type in selector.args[1:]:
         terminal = np.random.choice(pset.terminals[arg_type])
         individual.append(terminal)
 
     extractor = np.random.choice(pset.primitives[ExtractedArray])
     individual = [extractor] + individual
-    # np.ndarray is included only if it was not included before
     for arg_type in extractor.args[1:]:
         terminal = np.random.choice(pset.terminals[arg_type])
         individual.append(terminal)
