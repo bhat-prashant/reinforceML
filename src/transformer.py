@@ -8,7 +8,7 @@ from sklearn.decomposition import PCA
 
 import numpy as np
 from utils_ import reshape_numpy
-
+from copy import deepcopy
 
 # output class for scalers
 class ScaledArray(object):
@@ -61,6 +61,37 @@ class SubtractReinforce(BaseReinforceTransformer):
         transformed_X = reshape_numpy(transformed_X)
         return np.append(X, transformed_X, axis=1)
 
+
+# multiply operation using numpy.multiply
+class MultiplyReinforce(BaseReinforceTransformer):
+    def transform(self, X, y=None):
+        i_0 = self.args['index0']
+        i_1 = self.args['index1']
+        transformed_X = np.multiply(X[:, i_0], X[:, i_1])
+        transformed_X = reshape_numpy(transformed_X)
+        return np.append(X, transformed_X, axis=1)
+
+# divide operation using numpy.divide
+class DivideReinforce(BaseReinforceTransformer):
+    def transform(self, X, y=None):
+        i_0 = self.args['index0']
+        i_1 = self.args['index1']
+        divisor = deepcopy(X[:, i_1])
+        divisor[divisor < 1] = 1
+        transformed_X = np.divide(X[:, i_0], divisor)
+        transformed_X = reshape_numpy(transformed_X)
+        return np.append(X, transformed_X, axis=1)
+
+# log operation using numpy.log
+class LogReinforce(BaseReinforceTransformer):
+    def transform(self, X, y=None):
+        i_0 = self.args['index0']
+        temp = deepcopy(X[:, i_0])
+        # log operation is applicable only on numbers greater than zero!
+        temp[temp < 0.0001] = 0.0001
+        transformed_X = np.log(temp)
+        transformed_X = reshape_numpy(transformed_X)
+        return np.append(X, transformed_X, axis=1)
 
 # KBinsDiscretizer
 class KBinsDiscretizerReinforce(BaseReinforceTransformer):

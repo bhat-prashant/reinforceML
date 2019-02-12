@@ -15,12 +15,18 @@ from deap import gp
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.metrics import accuracy_score
 from sklearn.pipeline import make_pipeline
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, roc_auc_score
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 
-from gp_ import grow_individual, mate, mutate
+
+from gp_ import grow_individual, mate, mutate, cxOnePoint
 from lookup import TransformerLookUp
 from metrics_ import fitness_score
+from utils_ import reshape_numpy
 from transformer import TransformerClassGenerator, ScaledArray, SelectedArray, ExtractedArray
-
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.svm import SVC
 
 class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
 
@@ -31,6 +37,7 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
         self._pop_size = pop_size
         self._mutation_rate = mutation_rate
         self._crossover_rate = crossover_rate
+        self._estimator = SVC(random_state=10, gamma='auto')
         self._scorer = scorer
         self._feature_count = None
         self._initial_score = None
@@ -41,7 +48,6 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
 
     # create typed PrimitiveSet
     def _setup_pset(self):
-
         self._pset = gp.PrimitiveSetTyped('MAIN', [np.ndarray], ExtractedArray)
         self._pset.renameArguments(ARG0='input_matrix')
         trans_types = ['unary', 'scaler', 'selector', 'extractor']
@@ -73,18 +79,19 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
     def _setup_toolbox(self):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
-            creator.create('FitnessMulti', base.Fitness, weights=(1.0,-1.0))
-            creator.create('Individual', gp.PrimitiveTree, fitness=creator.FitnessMulti, statistics=dict)
+            creator.create('FitnessMax', base.Fitness, weights=(1.0,))
+            creator.create('Individual', gp.PrimitiveTree, fitness=creator.FitnessMax, statistics=dict)
 
         self._toolbox = base.Toolbox()
         self._toolbox.register('expr', grow_individual, pset=self._pset, min_=1, max_=8)
         self._toolbox.register('individual', tools.initIterate, creator.Individual, self._toolbox.expr)
         self._toolbox.register('population', tools.initRepeat, list, self._toolbox.individual)
         self._toolbox.register('evaluate', self._evaluate)
-        self._toolbox.register('select', tools.selNSGA2)
-        self._toolbox.register('mate', mate)
+        self._toolbox.register('select', tools.selBest)
+        self._toolbox.register('mate', cxOnePoint)
         # self._toolbox.register('expr_mut', self._gen_grow_safe, min_=1, max_=4)
         self._toolbox.register('mutate', mutate, self._pset)
+
 
     def _compile_to_sklearn(self, individual):
         height  = individual.height - 1 # start from first primitive
@@ -105,6 +112,8 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
             pipeline.append(operator)
             # Start from most basic primitive and move up the tree towards root / universal primitive
             height = height - 1
+        # add a estimator to the pipeline
+        pipeline.append(self._estimator)
         pipe = make_pipeline(*pipeline)
         return pipe
 
@@ -123,28 +132,30 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
 
 
     def _evaluate(self, individual):
-        input_matrix = deepcopy(self._X)
-        target = self._y
+        input_matrix = deepcopy(self._X_train)
+        target = self._y_train
         pipeline = self._compile_to_sklearn(individual=individual)
         try:
-            input_matrix = pipeline.fit_transform(input_matrix, target)
-            fitness, _ = fitness_score(input_matrix, target)
-            return fitness,individual.height
+            pipeline.fit(input_matrix, target)
+            y_pred = pipeline.predict(self._X_val)
+            return roc_auc_score(self._y_val, y_pred),
         # Future Work: Handle these exceptions
         except Exception as e:
-            print(e)
-            return 0,individual.height
+            # print(e)
+            return 0,
 
 
     def _evolve(self):
         print('Start of evolution')
         self._hof = tools.HallOfFame(3)
-        stats = tools.Statistics(lambda ind: ind.fitness.values)
+        stats = tools.Statistics(lambda ind: ind.fitness.values[0])
         stats.register("avg", np.mean)
         stats.register("std", np.std)
         stats.register("min", np.min)
         stats.register("max", np.max)
-        pop, log = algorithms.eaSimple(self._pop, self._toolbox, cxpb=0.1, mutpb=0.9, ngen=2,
+        # Future Work: add few new individuals every generation
+        pop, log = algorithms.eaMuPlusLambda(self._pop, toolbox=self._toolbox, mu=self._pop_size, lambda_=self._pop_size,
+                                             cxpb=self._crossover_rate, mutpb=self._mutation_rate, ngen=self._generation,
                                        stats=stats, halloffame=self._hof, verbose=True)
         # Future Work: Export Hall of Fame individuals' sklearn-pipeline to a file
         self._solution_to_file()
@@ -156,7 +167,9 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
         self._feature_count = self._X.shape[1]
 
         # initial accuracy on the given dataset
-        self._initial_score, _ = fitness_score(self._X, self._y)
+        self._estimator.fit(self._X_train, self._y_train)
+        y_pred = self._estimator.predict(self._X_val)
+        self._initial_score = roc_auc_score(self._y_val, y_pred)
         print('Initial Best score : ', self._initial_score)
 
         # setup toolbox for evolution
@@ -175,8 +188,10 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
 
     def fit(self, X, y):
         # Future Work: checking OneHotEncoding, datetime etc
-        self._X = X
-        self._y = y
+        self._X = reshape_numpy(X)
+        self._y = reshape_numpy(y)
+        self._X_train, self._X_val, self._y_train, self._y_val = train_test_split(self._X, self._y, test_size=0.2, random_state=10)
         print('Dataset target distribution %s' % Counter(y))
         self._fit_init()
-        return self._compile_to_sklearn(self._hof[0])
+        print(self._hof[0])
+        return self._compile_to_sklearn(self._hof[0]), self._estimator

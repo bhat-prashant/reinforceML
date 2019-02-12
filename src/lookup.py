@@ -11,7 +11,8 @@ from sklearn.feature_selection import SelectKBest, SelectFromModel, SelectPercen
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.svm import LinearSVC
 
-from transformer import AddReinforce, SubtractReinforce, KBinsDiscretizerReinforce, EmptyTransformer, PCAReinforce
+from transformer import AddReinforce, SubtractReinforce, KBinsDiscretizerReinforce, EmptyTransformer, \
+    PCAReinforce, MultiplyReinforce, DivideReinforce, LogReinforce
 
 
 class TransformerLookUp:
@@ -41,6 +42,35 @@ class TransformerLookUp:
                     'strategy': ['uniform', 'quantile'],
                     'n_bins': [3, 5, 7, 10, 15, 20, 30],
                     'index0': np.arange(0, self._X_col, 1)}
+            },
+
+            'AddReinforce': {
+                'transformer': AddReinforce,
+                'params': {'index0':np.arange(0, self._X_col, 1),
+                           'index1': np.arange(0, self._X_col, 1)}
+            },
+
+            'SubtractReinforce': {
+                'transformer': SubtractReinforce,
+                'params': {'index0':np.arange(0, self._X_col, 1),
+                           'index1': np.arange(0, self._X_col, 1)}
+            },
+
+            'MultiplyReinforce': {
+                'transformer': MultiplyReinforce,
+                'params': {'index0': np.arange(0, self._X_col, 1),
+                           'index1': np.arange(0, self._X_col, 1)}
+            },
+
+            'DivideReinforce': {
+                'transformer': DivideReinforce,
+                'params': {'index0': np.arange(0, self._X_col, 1),
+                           'index1': np.arange(0, self._X_col, 1)}
+            },
+
+            'LogReinforce': {
+                'transformer': LogReinforce,
+                'params': {'index0': np.arange(0, self._X_col, 1)}
             },
 
             'EmptyUnary': {
@@ -123,7 +153,7 @@ class TransformerLookUp:
                            'cv': [3, 5, 7],
                            'n_jobs': [-1]}
             },
-
+            # Future Work: Select the threshold dynamically (i.e use BaseReinforceTransformer to create a wrapper class)
             'VarianceThreshold': {
                 'transformer': VarianceThreshold,
                 'params': {'threshold': [0.0, 0.1, 0.2, 0.3, 0.4]}

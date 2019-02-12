@@ -5,6 +5,7 @@ __email__ = "PrashantShivaram@outlook.com"
 import numpy as np
 from transformer import ScaledArray, SelectedArray, ExtractedArray
 from copy import deepcopy
+from collections import defaultdict
 
 
 # Future Work : Write decorator for checking whether generated individual is valid
@@ -62,8 +63,10 @@ def grow_individual(pset, min_=3, max_=8):
     return individual
 
 # mating two individuals during evolution
-def mate(ind_1, ind_2):
-    return ind_1, ind_2
+def mate(pset, ind_1, ind_2):
+    off_1 = deepcopy(ind_1)
+    off_2 = grow_individual(pset)
+    return off_1, off_2
 
 # mutate an individual during evolution by randomly replacing parameters
 # Future Work : allow individual to grow, shrink during mutation
@@ -83,8 +86,37 @@ def mutate(pset, ind):
 
 
 
+# borrowed from tpot, credits: tpot
+def cxOnePoint(ind1, ind2):
+    """Randomly select in each individual and exchange each subtree with the
+    point as root between each individual.
+    :param ind1: First tree participating in the crossover.
+    :param ind2: Second tree participating in the crossover.
+    :returns: A tuple of two trees.
+    """
+    # List all available primitive types in each individual
+    types1 = defaultdict(list)
+    types2 = defaultdict(list)
 
+    for idx, node in enumerate(ind1[1:], 1):
+        types1[node.ret].append(idx)
+    common_types = []
+    for idx, node in enumerate(ind2[1:], 1):
+        if node.ret in types1 and node.ret not in types2:
+            common_types.append(node.ret)
+        types2[node.ret].append(idx)
 
+    if len(common_types) > 0:
+        type_ = np.random.choice(common_types)
+
+        index1 = np.random.choice(types1[type_])
+        index2 = np.random.choice(types2[type_])
+
+        slice1 = ind1.searchSubtree(index1)
+        slice2 = ind2.searchSubtree(index2)
+        ind1[slice1], ind2[slice2] = ind2[slice2], ind1[slice1]
+
+    return ind1, ind2
 
 
 

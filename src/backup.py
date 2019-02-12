@@ -2,24 +2,31 @@
 __author__ = "Prashant Shivarm Bhat"
 __email__ = "PrashantShivaram@outlook.com"
 import time
-
+import pandas as pd
 start = time.time()
-
-from sklearn.datasets import load_breast_cancer
-
-data = load_breast_cancer()
-X = data.data
-y = data.target
-
-
+from sklearn.model_selection import train_test_split
 from reinforce_ import FeatureEngineer
+from sklearn.metrics import accuracy_score, roc_auc_score
 
-feat = FeatureEngineer(pop_size=4)
-pipeline = feat.fit(X, y)
-X = pipeline.fit_transform(X, y)
+data  = pd.read_csv('../data/poker.csv', header=None)
+X = data.iloc[:, :10].values
+y = data.iloc[:, 10].values
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=10)
 
-from metrics_ import fitness_score
-score, _ = fitness_score(X, y)
-print(score)
+feat = FeatureEngineer(pop_size=50, generation=5)
+pipeline, estimator = feat.fit(X, y)
 
+
+# original dataset
+estimator.fit(X_train, y_train)
+y_pred = estimator.predict(X_test)
+initauc = roc_auc_score(y_test, y_pred)
+
+# transformed dataset
+pipeline.fit(X_train, y_train)
+y_pred_t = pipeline.predict(X_test)
+finalauc= roc_auc_score(y_test, y_pred_t)
+print('initial auc {} and final auc {}'.format(initauc, finalauc))
+error = ((1-initauc)-(1-finalauc)) / (1-initauc)
+print('Error Reduction: ', error*100)
 
