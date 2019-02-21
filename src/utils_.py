@@ -15,6 +15,14 @@ def reshape_numpy(ndarray):
     return ndarray
 
 
+# Append individual's transformers to pandas dataframe, later user for RL training
+def append_to_dataframe(dataframe, columns, individual, score):
+    row = dict((el,0) for el in columns)
+    idx = individual.height + 2
+    for terminal in individual[idx:]:
+        row[terminal.name] = 1
+    row[columns[-1]] = score # update reward
+    dataframe.loc[len(dataframe)] = list(row.values())
 
 
 

@@ -130,6 +130,7 @@ def ArgClassGenerator(transformer_name, arg_name, range, BaseClass=ARGType):
 # create transformer class dynamically
 def TransformerClassGenerator(name, transformerdict, BaseClass=BaseTransformer, ArgClass=ARGType):
     arg_types = []
+    # build arg classes
     for arg in transformerdict['params']:
         arg_types.append(ArgClassGenerator(name, arg, transformerdict['params'][arg], ArgClass))
     # build class attributes

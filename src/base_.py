@@ -8,6 +8,7 @@ from collections import Counter
 from copy import deepcopy
 
 import numpy as np
+
 random.seed(10)
 np.random.seed(10)
 from deap import creator, base, tools, algorithms
@@ -18,15 +19,15 @@ from sklearn.pipeline import make_pipeline
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, roc_auc_score
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
-
-
-from gp_ import grow_individual, mate, mutate, cxOnePoint
-from lookup import TransformerLookUp
-from metrics_ import fitness_score
-from utils_ import reshape_numpy
-from transformer import TransformerClassGenerator, ScaledArray, SelectedArray, ExtractedArray
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
+import pandas as pd
+
+from gp_ import grow_individual, mutate, cxOnePoint, eaMuPlusLambda
+from lookup import TransformerLookUp
+from utils_ import reshape_numpy, append_to_dataframe
+from transformer import TransformerClassGenerator, ScaledArray, SelectedArray, ExtractedArray
+
 
 class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
 
@@ -52,11 +53,12 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
         self._pset.renameArguments(ARG0='input_matrix')
         trans_types = ['unary', 'scaler', 'selector', 'extractor']
         lookup = TransformerLookUp(self._feature_count)
+        self._pandas_columns = []  # input features for RL training
         for type_ in trans_types:
             trans_lookup = lookup.get_lookup(type_)
-
             # add transformers as primitives
             for key in trans_lookup:
+                # add transformers to pset
                 transformer = TransformerClassGenerator(key, trans_lookup[key])
                 if type_ == 'unary':
                     self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, np.ndarray)
@@ -74,14 +76,16 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
                     for val in values:
                         arg_name = arg.__name__ + "=" + str(val)
                         self._pset.addTerminal(val, arg, name=arg_name)
-
+                        # input features for RL training
+                        self._pandas_columns.append(arg_name)
+        # target column for RL training
+        self._pandas_columns.append('reward')
 
     def _setup_toolbox(self):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
             creator.create('FitnessMax', base.Fitness, weights=(1.0,))
             creator.create('Individual', gp.PrimitiveTree, fitness=creator.FitnessMax, statistics=dict)
-
         self._toolbox = base.Toolbox()
         self._toolbox.register('expr', grow_individual, pset=self._pset, min_=1, max_=8)
         self._toolbox.register('individual', tools.initIterate, creator.Individual, self._toolbox.expr)
@@ -92,10 +96,11 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
         # self._toolbox.register('expr_mut', self._gen_grow_safe, min_=1, max_=4)
         self._toolbox.register('mutate', mutate, self._pset)
 
-
+    # compile individual into a sklearn pipeline
+    # Note: pipeline is appended with self._estimator as the final step
     def _compile_to_sklearn(self, individual):
-        height  = individual.height - 1 # start from first primitive
-        arg_pos = individual.height + 1 # start from first argument after input_matrix for the above primitive
+        height = individual.height - 1  # start from first primitive
+        arg_pos = individual.height + 1  # start from first argument after input_matrix for the above primitive
         pipeline = []
         # for every primitive transformer, do
         while height >= 0:
@@ -117,33 +122,29 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
         pipe = make_pipeline(*pipeline)
         return pipe
 
-
     # export best sklearn-pipelines to a file
     def _solution_to_file(self, f_name='solution'):
-        f = open("../results/{}.py".format(f_name), "w+")
-        # import libraries
-        f.write('import pandas as pd \n')
-        f.write('import sklearn \n')
-        f.write('import numpy as np \n')
-        # for i in range(len(self._hof)):
-        #     pipline = self._compile_to_sklearn(self._hof[i])
-        #     pass
-        f.close()
+        pass
 
-
+    # fit and predict (input, target) for given pipeline
+    # Note: pipeline is appended with self._estimator as the final step
     def _evaluate(self, individual):
         input_matrix = deepcopy(self._X_train)
         target = self._y_train
         pipeline = self._compile_to_sklearn(individual=individual)
+        score = 0
         try:
             pipeline.fit(input_matrix, target)
             y_pred = pipeline.predict(self._X_val)
-            return roc_auc_score(self._y_val, y_pred),
+            score = roc_auc_score(self._y_val, y_pred)
+            # append individual pipeline config and score to dataframe, used for RL training
+            append_to_dataframe(self._rl_dataframe, self._pandas_columns, individual, score)
+            return score,
         # Future Work: Handle these exceptions
         except Exception as e:
             # print(e)
-            return 0,
-
+            append_to_dataframe(self._rl_dataframe, self._pandas_columns, individual, score)
+            return score,
 
     def _evolve(self):
         print('Start of evolution')
@@ -154,13 +155,17 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
         stats.register("min", np.min)
         stats.register("max", np.max)
         # Future Work: add few new individuals every generation
-        pop, log = algorithms.eaMuPlusLambda(self._pop, toolbox=self._toolbox, mu=self._pop_size, lambda_=self._pop_size,
-                                             cxpb=self._crossover_rate, mutpb=self._mutation_rate, ngen=self._generation,
-                                       stats=stats, halloffame=self._hof, verbose=True)
+        pop, log = eaMuPlusLambda(self._pop, toolbox=self._toolbox, mu=self._pop_size, lambda_=self._pop_size,
+                                  cxpb=self._crossover_rate, mutpb=self._mutation_rate, ngen=self._generation,
+                                  stats=stats, halloffame=self._hof, verbose=True)
         # Future Work: Export Hall of Fame individuals' sklearn-pipeline to a file
         self._solution_to_file()
 
-
+    # From a list of index tuples, create pandas multi-index dataframe
+    def _create_dataframe(self):
+        # index = pd.MultiIndex.from_tuples(self._pandas_columns, names=['transformer', 'args'])
+        self._rl_dataframe = pd.DataFrame(columns=self._pandas_columns)
+        pass
 
     # Initialization steps
     def _fit_init(self):
@@ -175,22 +180,27 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
         # setup toolbox for evolution
         self._setup_pset()
 
+        # create dataframe for RL training
+        self._create_dataframe()
+
         # create population
         self._setup_toolbox()
 
         # Future Work: Some of these ind are taking too much time. Inspect why!
+        # create population and update their fitness score
         self._pop = self._toolbox.population(self._pop_size)
+        for ind in self._pop:
+            ind.fitness.values = self._evaluate(ind)
 
+        # start evolution
         self._evolve()
-
-
-
 
     def fit(self, X, y):
         # Future Work: checking OneHotEncoding, datetime etc
         self._X = reshape_numpy(X)
         self._y = reshape_numpy(y)
-        self._X_train, self._X_val, self._y_train, self._y_val = train_test_split(self._X, self._y, test_size=0.2, random_state=10)
+        self._X_train, self._X_val, self._y_train, self._y_val = train_test_split(self._X, self._y, test_size=0.2,
+                                                                                  random_state=10)
         print('Dataset target distribution %s' % Counter(y))
         self._fit_init()
         print(self._hof[0])

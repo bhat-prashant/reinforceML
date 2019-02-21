@@ -1,55 +1,21 @@
 # #!/usr/bin/env python
-# __author__ = "Prashant Shivarm Bhat"
-# __email__ = "PrashantShivaram@outlook.com"
-# import time
-# start = time.time()
-#
-# from sklearn.datasets import load_wine
-# data = load_wine()
-# X = data.data
-# y = data.target
-#
-# # from reinforce_ import FeatureEngineer
-# # feat = FeatureEngineer()
-# # feat.fit(X, y)
-# #
-#
-#
-# from tpot import TPOTClassifier
-#
-# tpo = TPOTClassifier(population_size=100, generations=3)
-# tpo.fit(X, y)
-
-from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+__author__ = "Prashant Shivarm Bhat"
+__email__ = "PrashantShivaram@outlook.com"
 
 
+from sklearn.pipeline import Pipeline, make_pipeline
 
-import time
-import pandas as pd
-start = time.time()
-from sklearn.model_selection import train_test_split
-from reinforce_ import FeatureEngineer
-from sklearn.metrics import accuracy_score, roc_auc_score
+from sklearn.svm import SVC
+from sklearn.preprocessing import StandardScaler
 
-data  = pd.read_csv('../data/wind.csv')
-X = data.iloc[:, :14].values
-y = data.iloc[:, 14].values
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=10)
-# from sklearn.preprocessing import StandardScaler
-# scalar = StandardScaler()
-# X_train = scalar.fit_transform(X_train)
-# X_test = scalar.transform(X_test)
-# from sklearn.decomposition import PCA
-# pca = PCA(n_components=10)
-# X_train = pca.fit_transform(X_train)
-# X_test = pca.transform(X_test)
+p1 = make_pipeline(StandardScaler(), SVC(C=1))
+p3 = make_pipeline(StandardScaler(), SVC(C=1))
 
-cls = GradientBoostingClassifier(n_estimators=200, random_state=10)
-cls.fit(X_train, y_train)
-ypred = cls.predict(X_test)
-score = roc_auc_score(y_test, ypred)
-print(score)
-
-
-
-
+temp = {}
+temp[str(p1)] = 0.5
+temp[str(p3)] = 0.8
+print(len(temp))
+a = str(p3)
+p4 = exec(a)
+if p1.steps == p3.steps:
+    print('HI')
