@@ -18,7 +18,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.pipeline import make_pipeline
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, roc_auc_score
-from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier, RandomForestRegressor
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
 import pandas as pd
@@ -39,6 +39,8 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
         self._mutation_rate = mutation_rate
         self._crossover_rate = crossover_rate
         self._estimator = SVC(random_state=10, gamma='auto')
+        self._reinforce_learner = RandomForestRegressor(n_estimators=500, random_state=10,
+                                                         n_jobs=-1, warm_start=False)
         self._scorer = scorer
         self._feature_count = None
         self._initial_score = None
@@ -78,8 +80,8 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
                         self._pset.addTerminal(val, arg, name=arg_name)
                         # input features for RL training
                         self._pandas_columns.append(arg_name)
-        # target column for RL training
-        self._pandas_columns.append('reward')
+
+
 
     def _setup_toolbox(self):
         with warnings.catch_warnings():
@@ -93,8 +95,9 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
         self._toolbox.register('evaluate', self._evaluate)
         self._toolbox.register('select', tools.selBest)
         self._toolbox.register('mate', cxOnePoint)
-        # self._toolbox.register('expr_mut', self._gen_grow_safe, min_=1, max_=4)
         self._toolbox.register('mutate', mutate, self._pset)
+        self._toolbox.register('train_RL', self._train_RL)
+
 
     # compile individual into a sklearn pipeline
     # Note: pipeline is appended with self._estimator as the final step
@@ -122,9 +125,11 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
         pipe = make_pipeline(*pipeline)
         return pipe
 
+
     # export best sklearn-pipelines to a file
     def _solution_to_file(self, f_name='solution'):
         pass
+
 
     # fit and predict (input, target) for given pipeline
     # Note: pipeline is appended with self._estimator as the final step
@@ -138,13 +143,14 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
             y_pred = pipeline.predict(self._X_val)
             score = roc_auc_score(self._y_val, y_pred)
             # append individual pipeline config and score to dataframe, used for RL training
-            append_to_dataframe(self._rl_dataframe, self._pandas_columns, individual, score)
+            self._rl_dataframe = append_to_dataframe(self._rl_dataframe, self._pandas_columns, individual, score)
             return score,
         # Future Work: Handle these exceptions
         except Exception as e:
             # print(e)
-            append_to_dataframe(self._rl_dataframe, self._pandas_columns, individual, score)
+            self._rl_dataframe = append_to_dataframe(self._rl_dataframe, self._pandas_columns, individual, score)
             return score,
+
 
     def _evolve(self):
         print('Start of evolution')
@@ -161,39 +167,43 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
         # Future Work: Export Hall of Fame individuals' sklearn-pipeline to a file
         self._solution_to_file()
 
+
     # From a list of index tuples, create pandas multi-index dataframe
     def _create_dataframe(self):
-        # index = pd.MultiIndex.from_tuples(self._pandas_columns, names=['transformer', 'args'])
+        # target column for RL training
+        self._pandas_columns.append('reward')
         self._rl_dataframe = pd.DataFrame(columns=self._pandas_columns)
+
+
+
+    # Train reinforcement learning
+    def _train_RL(self):
+        X = self._rl_dataframe.iloc[:, :-1].values
+        y = self._rl_dataframe.iloc[:, -1].values
+        self._reinforce_learner.fit(X, y)
         pass
+
 
     # Initialization steps
     def _fit_init(self):
         self._feature_count = self._X.shape[1]
-
         # initial accuracy on the given dataset
         self._estimator.fit(self._X_train, self._y_train)
         y_pred = self._estimator.predict(self._X_val)
         self._initial_score = roc_auc_score(self._y_val, y_pred)
         print('Initial Best score : ', self._initial_score)
-
         # setup toolbox for evolution
         self._setup_pset()
-
         # create dataframe for RL training
         self._create_dataframe()
-
         # create population
         self._setup_toolbox()
-
         # Future Work: Some of these ind are taking too much time. Inspect why!
-        # create population and update their fitness score
+        # create population
         self._pop = self._toolbox.population(self._pop_size)
-        for ind in self._pop:
-            ind.fitness.values = self._evaluate(ind)
-
         # start evolution
         self._evolve()
+
 
     def fit(self, X, y):
         # Future Work: checking OneHotEncoding, datetime etc

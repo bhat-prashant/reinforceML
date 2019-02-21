@@ -3,6 +3,7 @@ __author__ = "Prashant Shivarm Bhat"
 __email__ = "PrashantShivaram@outlook.com"
 
 import numpy as np
+import pandas as pd
 
 
 def reshape_data(individual):
@@ -22,9 +23,8 @@ def append_to_dataframe(dataframe, columns, individual, score):
     for terminal in individual[idx:]:
         row[terminal.name] = 1
     row[columns[-1]] = score # update reward
-    dataframe.loc[len(dataframe)] = list(row.values())
-
-
+    df_row = pd.DataFrame.from_dict([row], orient='columns')
+    return pd.concat([dataframe, df_row], sort=False)
 
 
 
