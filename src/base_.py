@@ -25,7 +25,7 @@ import pandas as pd
 
 from gp_ import grow_individual, mutate, cxOnePoint, eaMuPlusLambda
 from lookup import TransformerLookUp
-from utils_ import reshape_numpy, append_to_dataframe
+from utils_ import reshape_numpy, append_to_dataframe, get_individual_config
 from transformer import TransformerClassGenerator, ScaledArray, SelectedArray, ExtractedArray
 
 
@@ -142,6 +142,8 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
             pipeline.fit(input_matrix, target)
             y_pred = pipeline.predict(self._X_val)
             score = roc_auc_score(self._y_val, y_pred)
+            dataframe = get_individual_config(self._pandas_columns, individual)
+            self._predict_RL(dataframe)
             # append individual pipeline config and score to dataframe, used for RL training
             self._rl_dataframe = append_to_dataframe(self._rl_dataframe, self._pandas_columns, individual, score)
             return score,
@@ -177,10 +179,17 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
 
 
     # Train reinforcement learning
+    # Future Work: Use GridSearchCV instead of a bare estimator
     def _train_RL(self):
         X = self._rl_dataframe.iloc[:, :-1].values
         y = self._rl_dataframe.iloc[:, -1].values
         self._reinforce_learner.fit(X, y)
+        pass
+
+    # Predict reward from reinforcement learning
+    def _predict_RL(self, dataframe):
+        X = dataframe.iloc[:, :-1].values
+        ypred = self._reinforce_learner.predict(X)
         pass
 
 

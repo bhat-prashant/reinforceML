@@ -18,14 +18,20 @@ def reshape_numpy(ndarray):
 
 # Append individual's transformers to pandas dataframe, later user for RL training
 def append_to_dataframe(dataframe, columns, individual, score):
-    row = dict((el,0) for el in columns)
+    row = dict((el,[0]) for el in columns)
     idx = individual.height + 2
     for terminal in individual[idx:]:
-        row[terminal.name] = 1
-    row[columns[-1]] = score # update reward
-    df_row = pd.DataFrame.from_dict([row], orient='columns')
+        row[terminal.name] = [1]
+    row[columns[-1]] = [score] # update reward
+    df_row = pd.DataFrame.from_dict(row, orient='columns')
     return pd.concat([dataframe, df_row], sort=False)
 
 
-
+# Append individual's transformers to pandas dataframe, later user for RL training
+def get_individual_config(columns, individual):
+    row = dict((el,[0]) for el in columns)
+    idx = individual.height + 2
+    for terminal in individual[idx:]:
+        row[terminal.name] = [1]
+    return pd.DataFrame.from_dict(row, orient='columns')
 
