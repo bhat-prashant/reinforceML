@@ -17,7 +17,7 @@ X = data.iloc[:, :-1].values
 y = data.iloc[:, -1].values
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=10)
 
-feat = FeatureEngineer(pop_size=10, generation=20)
+feat = FeatureEngineer(pop_size=10, generation=1)
 pipeline, estimator = feat.fit(X, y)
 
 
