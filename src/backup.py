@@ -39,7 +39,6 @@ print('Error Reduction: ', error*100)
 # Future Work: remove emptyTransformers
 row = [datetime.now(), feat._estimator.__class__.__name__, feat._hof[0], initauc, finalauc, "{}%".format(error) ]
 
-
 with open("../results/results.csv", "a") as results:
     CSVWriter = csv.writer(results)
     CSVWriter.writerow(row)
