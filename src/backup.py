@@ -3,6 +3,10 @@ __author__ = "Prashant Shivarm Bhat"
 __email__ = "PrashantShivaram@outlook.com"
 import time
 import pandas as pd
+from datetime import datetime
+import os
+import csv
+
 start = time.time()
 from sklearn.model_selection import train_test_split
 from reinforce_ import FeatureEngineer
@@ -32,3 +36,16 @@ print('Error Reduction: ', error*100)
 
 
 
+# Future Work: remove emptyTransformers
+row = [datetime.now(), feat._estimator.__class__.__name__, feat._hof[0], initauc, finalauc, "{}%".format(error) ]
+
+
+with open("../results/results.csv", "a") as results:
+    CSVWriter = csv.writer(results)
+    CSVWriter.writerow(row)
+
+from sklearn.externals import joblib
+filepath = '../models/pathmate.pkl'
+if os.path.exists(filepath):
+    os.remove(filepath)
+joblib.dump(pipeline, filepath, compress=1)
