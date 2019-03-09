@@ -12,12 +12,12 @@ from sklearn.model_selection import train_test_split
 from reinforce_ import FeatureEngineer
 from sklearn.metrics import accuracy_score, roc_auc_score
 
-data  = pd.read_csv('../data/pathmate.csv', header=None)
+data  = pd.read_csv('../data/diabetes.csv', header=None)
 X = data.iloc[:, :-1].values
 y = data.iloc[:, -1].values
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=10)
 
-feat = FeatureEngineer(pop_size=10, generation=1)
+feat = FeatureEngineer(pop_size=50, generation=10)
 pipeline, estimator = feat.fit(X, y)
 
 

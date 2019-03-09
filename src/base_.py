@@ -8,9 +8,9 @@ from collections import Counter
 from copy import deepcopy
 
 import numpy as np
-
 random.seed(10)
 np.random.seed(10)
+import scipy
 from deap import creator, base, tools, algorithms
 from deap import gp
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -18,7 +18,8 @@ from sklearn.metrics import accuracy_score
 from sklearn.pipeline import make_pipeline
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, roc_auc_score
-from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier, RandomForestRegressor
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier, RandomForestRegressor, GradientBoostingRegressor
+from sklearn.linear_model import  LinearRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
 import pandas as pd
@@ -39,8 +40,7 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
         self._mutation_rate = mutation_rate
         self._crossover_rate = crossover_rate
         self._estimator = SVC(random_state=10, gamma='auto')
-        self._reinforce_learner = RandomForestRegressor(n_estimators=500, random_state=10,
-                                                         n_jobs=-1, warm_start=False)
+        self._reinforce_learner = LinearRegression()#n_jobs=-1,n_estimators=500, random_state=10,warm_start=False
         self._scorer = scorer
         self._feature_count = None
         self._initial_score = None
@@ -143,13 +143,13 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
             y_pred = pipeline.predict(self._X_val)
             score = roc_auc_score(self._y_val, y_pred)
             dataframe = get_individual_config(self._pandas_columns, individual)
+            print("Actual : ", score)
             self._predict_RL(dataframe)
             # append individual pipeline config and score to dataframe, used for RL training
             self._rl_dataframe = append_to_dataframe(self._rl_dataframe, self._pandas_columns, individual, score)
             return score,
         # Future Work: Handle these exceptions
         except Exception as e:
-            # print(e)
             self._rl_dataframe = append_to_dataframe(self._rl_dataframe, self._pandas_columns, individual, score)
             return score,
 
@@ -170,27 +170,31 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
         self._solution_to_file()
 
 
-    # From a list of index tuples, create pandas multi-index dataframe
+    # From a list of index tuples, create pandas dataframe
     def _create_dataframe(self):
         # target column for RL training
         self._pandas_columns.append('reward')
         self._rl_dataframe = pd.DataFrame(columns=self._pandas_columns)
 
 
-
     # Train reinforcement learning
     # Future Work: Use GridSearchCV instead of a bare estimator
     def _train_RL(self):
+        self._rl_dataframe = self._rl_dataframe.drop_duplicates()
+        self._rl_dataframe = self._rl_dataframe.reset_index(drop=True)
         X = self._rl_dataframe.iloc[:, :-1].values
         y = self._rl_dataframe.iloc[:, -1].values
-        self._reinforce_learner.fit(X, y)
-        pass
+        X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=10)
+        self._reinforce_learner.fit(X_tr, y_tr)
+        y_pr = self._reinforce_learner.predict(X_te)
+        print("RL score : ", scipy.stats.pearsonr(y_te, y_pr))
+
 
     # Predict reward from reinforcement learning
     def _predict_RL(self, dataframe):
         X = dataframe.iloc[:, :-1].values
         ypred = self._reinforce_learner.predict(X)
-        pass
+        print("Predicted : ", ypred)
 
 
     # Initialization steps
