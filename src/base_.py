@@ -40,7 +40,7 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
         self._mutation_rate = mutation_rate
         self._crossover_rate = crossover_rate
         self._estimator = SVC(random_state=10, gamma='auto')
-        self._reinforce_learner = LinearRegression()#n_jobs=-1,n_estimators=500, random_state=10,warm_start=False
+        self._reinforce_learner = RandomForestRegressor(n_jobs=-1,n_estimators=500, random_state=10,warm_start=False)
         self._scorer = scorer
         self._feature_count = None
         self._initial_score = None
@@ -143,8 +143,8 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
             y_pred = pipeline.predict(self._X_val)
             score = roc_auc_score(self._y_val, y_pred)
             dataframe = get_individual_config(self._pandas_columns, individual)
-            print("Actual : ", score)
-            self._predict_RL(dataframe)
+            # print("Actual : ", score)
+            #self._predict_RL(dataframe)
             # append individual pipeline config and score to dataframe, used for RL training
             self._rl_dataframe = append_to_dataframe(self._rl_dataframe, self._pandas_columns, individual, score)
             return score,
