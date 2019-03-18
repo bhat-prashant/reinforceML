@@ -24,6 +24,21 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
 
     def __init__(self, estimator, reinforce_learner, generation, pop_size, mutation_rate,
                  crossover_rate, scorer, inputArray, outputArray, trans_types):
+        """ Base class for tree based evolution
+
+        :param estimator: an instance of sklearn estimator
+        :param reinforce_learner: surrogate model for informed evolution
+                It is an instance of skelarn regressor
+        :param generation: number of generations to run during evolution
+        :param pop_size: number of different individuals / pipelines to be created during evolution (population size)
+        :param mutation_rate: rate of mutation during evolution
+        :param crossover_rate: rate of cross over during evolution. sum of mutation_rate and crossover_rate should sum to 1
+        :param scorer: one of sklearn metrics, usually one of accuracy_score / r2_score depending on the target_type
+                can be left to default in case you mention target_type
+        :param inputArray: Input array type for primitive set, default to np.ndarray
+        :param outputArray: Ouput array type for primitive set
+        :param trans_types: list of transformers to be used during evolution
+        """
         self._generation = generation
         self._pop_size = pop_size
         self._mutation_rate = mutation_rate
@@ -43,8 +58,13 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         self._pset = None
         self._pandas_columns = None
 
-    # create typed PrimitiveSet
     def _setup_pset(self):
+        """ creates a typed PrimitiveSet
+        Given transformer types, creates a typed primitive set
+        Also creates an empty surrogate dataframe
+
+        :return: None
+        """
         if self._inputArray is not None and self._outputArray is not None and isinstance(self._trans_types, list):
             self._pset = gp.PrimitiveSetTyped('MAIN', self._inputArray, self._outputArray)
             self._pset.renameArguments(ARG0='input_matrix')
@@ -78,6 +98,11 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
                             self._pandas_columns.append(arg_name)
 
     def _setup_toolbox(self):
+        """ sets up toolbox for evolution
+        Register essential evolutionary functions with the toolbox
+
+        :return: None
+        """
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
             creator.create('FitnessMax', base.Fitness, weights=(1.0,))
@@ -92,9 +117,13 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         self._toolbox.register('mutate', mutate, self._pset)
         self._toolbox.register('train_RL', self._train_RL)
 
-    # compile individual into a sklearn pipeline
-    # Note: pipeline is appended with self._estimator as the final step
     def _compile_to_sklearn(self, individual):
+        """ Transform DEAP Individual to sklearn pipeline
+            Note: pipeline is appended with self._estimator as the final step
+
+        :param individual: an instance of DEAP Individual
+        :return: sklearn pipeline
+        """
         height = individual.height - 1  # start from first primitive
         arg_pos = individual.height + 1  # start from first argument after input_matrix for the above primitive
         pipeline = []
@@ -118,17 +147,29 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         pipe = make_pipeline(*pipeline)
         return pipe
 
-    # export best sklearn-pipelines to a file
     def _solution_to_file(self, f_name='solution'):
+        """ FUture Work: Export best pipeline and the corresponding code to the file
+
+        :param f_name: string, file name
+        :return: None
+        """
         pass
 
-    # fit and predict (input, target) for given pipeline
-    # Note: pipeline is appended with self._estimator as the final step
     @abc.abstractmethod
     def _evaluate(self, individual):
+        """ Abstract method for evaluating individuals during evolution
+
+        :param individual:
+        :return:
+        """
         pass
 
     def _evolve(self):
+        """ Start evolution
+        Create Hall Of Fame, register statistics and start the evolution
+
+        :return:None
+        """
         print('Start of evolution')
         self._hof = tools.HallOfFame(3)
         stats = tools.Statistics(lambda ind: ind.fitness.values[0])
@@ -143,15 +184,21 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         # Future Work: Export Hall of Fame individuals' sklearn-pipeline to a file
         self._solution_to_file()
 
-    # From a list of index tuples, create pandas dataframe
     def _create_dataframe(self):
+        """ From a list of index tuples, create pandas dataframe for the surrogate task
+
+        :return: None
+        """
         # target column for RL training
         self._pandas_columns.append('reward')
         self._rl_dataframe = pd.DataFrame(columns=self._pandas_columns)
 
-    # Train reinforcement learning
-    # Future Work: Use GridSearchCV instead of a bare estimator
     def _train_RL(self):
+        """ Train surrogate network for informed evolution
+        Future Work: Use GridSearchCV instead of a bare estimator
+
+        :return:None
+        """
         self._rl_dataframe = self._rl_dataframe.drop_duplicates()
         self._rl_dataframe = self._rl_dataframe.reset_index(drop=True)
         X = self._rl_dataframe.iloc[:, :-1].values
@@ -161,16 +208,33 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         y_pr = self._reinforce_learner.predict(X_te)
         print("RL score : ", scipy.stats.pearsonr(y_te, y_pr))
 
-    # Predict reward from reinforcement learning
     def _predict_RL(self, dataframe):
+        """ predict fitness using surrogate network
+
+        :param dataframe: pandas dataframe object
+        :return: None
+        """
         X = dataframe.iloc[:, :-1].values
         ypred = self._reinforce_learner.predict(X)
         print("Predicted : ", ypred)
 
     @abc.abstractmethod
     def fit(self, X, y):
+        """ abstract method for initializing primitive set, toolbox, create surrogate dataframe,
+        create initial population and start the evolution.
+
+        :param X: numpy ndarray input matrix [n_samples, n_features]
+        :param y: numpy ndarray target values
+        :return: None
+        """
         pass
 
     @abc.abstractmethod
-    def predict(self):
+    def predict(self, X=None, y=None):
+        """ abstract method,  Returns a pipeline that yields the best score for the given estimator and scorer
+
+        :param X: numpy ndarray input matrix [n_samples, n_features]
+        :param y: numpy ndarray target values
+        :return: a tuple of sklearn pipeline and a instance of estimator
+        """
         pass
