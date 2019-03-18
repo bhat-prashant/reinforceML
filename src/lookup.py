@@ -246,12 +246,16 @@ class TransformerLookUp:
                            'loss': ["hinge", "squared_hinge"],
                            'dual': [True, False],
                            'tol': [1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
-                           'C': [1e-4, 1e-3, 1e-2, 1e-1, 0.5, 1., 5., 10., 15., 20., 25.]}
+                           'C': [1e-4, 1e-3, 1e-2, 1e-1, 0.5, 1., 5., 10., 15., 20., 25.],
+                           'max_iter': [100000]}
             },
             'LogisticRegression': {
                 'transformer': LogisticRegression,
                 'params': {'penalty': ["l1", "l2"],
                            'C': [1e-4, 1e-3, 1e-2, 1e-1, 0.5, 1., 5., 10., 15., 20., 25.],
-                           'dual': [True, False]}
+                           'dual': [True, False],
+                           'solver': ['sag'],
+                           'max_iter': [100000],
+                           'multi_class': ['auto']}
             }
         }

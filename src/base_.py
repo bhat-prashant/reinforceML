@@ -2,93 +2,120 @@
 __author__ = "Prashant Shivarm Bhat"
 __email__ = "PrashantShivaram@outlook.com"
 
+import abc
 import random
 import warnings
-from collections import Counter
-from copy import deepcopy
-
 import numpy as np
+import pandas as pd
+from copy import  deepcopy
+from deap import gp, creator, base, tools
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import make_pipeline
+from gp_ import grow_individual, mutate, cxOnePoint, eaMuPlusLambda
+from utils_ import append_to_dataframe, get_individual_config, reshape_numpy
+from lookup import TransformerLookUp
+from transformer import TransformerClassGenerator, ScaledArray, SelectedArray, ExtractedArray, ClassifiedArray
+from scipy import stats
+import multiprocessing
 random.seed(10)
 np.random.seed(10)
-import scipy
-from deap import creator, base, tools, algorithms
-from deap import gp
-from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.metrics import accuracy_score
-from sklearn.pipeline import make_pipeline
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, roc_auc_score
-from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier, RandomForestRegressor, GradientBoostingRegressor
-from sklearn.linear_model import  LinearRegression
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.svm import SVC
-import pandas as pd
-
-from gp_ import grow_individual, mutate, cxOnePoint, eaMuPlusLambda
-from lookup import TransformerLookUp
-from utils_ import reshape_numpy, append_to_dataframe, get_individual_config
-from transformer import TransformerClassGenerator, ScaledArray, SelectedArray, ExtractedArray
 
 
-class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
+class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
 
-    def __init__(self, generation=5, pop_size=None, mutation_rate=0.3,
-                 crossover_rate=0.7, scorer=accuracy_score):
+    def __init__(self, estimator, reinforce_learner, feateng, generation, pop_size, mutation_rate,
+                 crossover_rate, scorer, inputArray, outputArray, trans_types):
+        """ Base class for tree based evolution
+
+        :param estimator: an instance of sklearn estimator
+        :param reinforce_learner: surrogate model for informed evolution
+                It is an instance of skelarn regressor
+        :param feateng: boolean,
+                if True, task is feature engineering. If False, task is one of regression, classification etc.
+        :param generation: int, number of generations to run during evolution
+        :param pop_size: int, number of different individuals / pipelines to be created during evolution (population size)
+        :param mutation_rate: float, rate of mutation during evolution
+        :param crossover_rate: float, rate of cross over during evolution. sum of mutation_rate and crossover_rate should sum to 1
+        :param scorer: one of sklearn metrics, usually one of accuracy_score / r2_score depending on the target_type
+                can be left to default in case you mention target_type
+        :param inputArray: Input array type for primitive set, default to np.ndarray
+        :param outputArray: Ouput array type for primitive set
+        :param trans_types: list of transformers to be used during evolution
+        """
         self._generation = generation
         self._pop_size = pop_size
+        self._feateng = feateng
         self._mutation_rate = mutation_rate
         self._crossover_rate = crossover_rate
-        self._estimator = SVC(random_state=10, gamma='auto')
-        self._reinforce_learner = RandomForestRegressor(n_jobs=-1,n_estimators=500, random_state=10,warm_start=False)
+        self._estimator = estimator
+        self._reinforce_learner = reinforce_learner
         self._scorer = scorer
+        self._inputArray = inputArray
+        self._outputArray = outputArray
+        self._trans_types = trans_types
         self._feature_count = None
         self._initial_score = None
         self._pop = None
         self._toolbox = None
         self._X = None
         self._y = None
+        self._pset = None
+        self._pandas_columns = None
 
-    # create typed PrimitiveSet
     def _setup_pset(self):
-        self._pset = gp.PrimitiveSetTyped('MAIN', [np.ndarray], ExtractedArray)
-        self._pset.renameArguments(ARG0='input_matrix')
-        trans_types = ['unary', 'scaler', 'selector', 'extractor']
-        lookup = TransformerLookUp(self._feature_count)
-        self._pandas_columns = []  # input features for RL training
-        for type_ in trans_types:
-            trans_lookup = lookup.get_lookup(type_)
-            # add transformers as primitives
-            for key in trans_lookup:
-                # add transformers to pset
-                transformer = TransformerClassGenerator(key, trans_lookup[key])
-                if type_ == 'unary':
-                    self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, np.ndarray)
-                elif type_ == 'scaler':
-                    self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, ScaledArray)
-                elif type_ == 'selector':
-                    self._pset.addPrimitive(transformer, [ScaledArray] + transformer.arg_types, SelectedArray)
-                elif type_ == 'extractor':
-                    self._pset.addPrimitive(transformer, [SelectedArray] + transformer.arg_types, ExtractedArray)
+        """ creates a typed PrimitiveSet
 
-                # add transformer arguments as terminal
-                # arg_types is a list
-                for arg in transformer.arg_types:
-                    values = list(arg.values)
-                    for val in values:
-                        arg_name = arg.__name__ + "=" + str(val)
-                        self._pset.addTerminal(val, arg, name=arg_name)
-                        # input features for RL training
-                        self._pandas_columns.append(arg_name)
+        Given transformer types, creates a typed primitive set
+        Also creates an empty surrogate dataframe
 
+        :return: None
+        """
+        if self._inputArray is not None and self._outputArray is not None and isinstance(self._trans_types, list):
+            self._pset = gp.PrimitiveSetTyped('MAIN', self._inputArray, self._outputArray)
+            self._pset.renameArguments(ARG0='input_matrix')
+            lookup = TransformerLookUp(self._feature_count)
+            self._pandas_columns = []  # input features for RL training
+            for type_ in self._trans_types:
+                trans_lookup = lookup.get_lookup(type_)
+                # add transformers as primitives
+                for key in trans_lookup:
+                    # add transformers to pset
+                    transformer = TransformerClassGenerator(key, trans_lookup[key])
+                    if type_ == 'unary':
+                        self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, np.ndarray)
+                    elif type_ == 'scaler':
+                        self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, ScaledArray)
+                    elif type_ == 'selector':
+                        self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, SelectedArray)
+                    elif type_ == 'extractor':
+                        self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, ExtractedArray)
+                    elif type_ == 'classifier':
+                        self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, ClassifiedArray)
 
+                    # add transformer arguments as terminal
+                    # arg_types is a list
+                    for arg in transformer.arg_types:
+                        values = list(arg.values)
+                        for val in values:
+                            arg_name = arg.__name__ + "=" + str(val)
+                            self._pset.addTerminal(val, arg, name=arg_name)
+                            # input features for RL training
+                            self._pandas_columns.append(arg_name)
 
     def _setup_toolbox(self):
+        """ sets up toolbox for evolution
+
+        Register essential evolutionary functions with the toolbox
+
+        :return: None
+        """
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
-            creator.create('FitnessMax', base.Fitness, weights=(1.0,))
-            creator.create('Individual', gp.PrimitiveTree, fitness=creator.FitnessMax, statistics=dict)
+            creator.create('FitnessMulti', base.Fitness, weights=(1.0,-0.4))
+            creator.create('Individual', gp.PrimitiveTree, fitness=creator.FitnessMulti, statistics=dict)
         self._toolbox = base.Toolbox()
-        self._toolbox.register('expr', grow_individual, pset=self._pset, min_=1, max_=8)
+        self._toolbox.register('expr', grow_individual, pset=self._pset, trans_types=self._trans_types, min_=1, max_=8)
         self._toolbox.register('individual', tools.initIterate, creator.Individual, self._toolbox.expr)
         self._toolbox.register('population', tools.initRepeat, list, self._toolbox.individual)
         self._toolbox.register('evaluate', self._evaluate)
@@ -97,10 +124,14 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
         self._toolbox.register('mutate', mutate, self._pset)
         self._toolbox.register('train_RL', self._train_RL)
 
-
-    # compile individual into a sklearn pipeline
-    # Note: pipeline is appended with self._estimator as the final step
     def _compile_to_sklearn(self, individual):
+        """ Transform DEAP Individual to sklearn pipeline
+
+            Note: pipeline is appended with self._estimator as the final step
+
+        :param individual: an instance of DEAP Individual
+        :return: sklearn pipeline
+        """
         height = individual.height - 1  # start from first primitive
         arg_pos = individual.height + 1  # start from first argument after input_matrix for the above primitive
         pipeline = []
@@ -119,41 +150,19 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
             pipeline.append(operator)
             # Start from most basic primitive and move up the tree towards root / universal primitive
             height = height - 1
-        # add a estimator to the pipeline
-        pipeline.append(self._estimator)
+        # add a estimator to the pipeline only if its a feature engineering
+        if self._feateng:
+            pipeline.append(self._estimator)
         pipe = make_pipeline(*pipeline)
         return pipe
 
-
-    # export best sklearn-pipelines to a file
-    def _solution_to_file(self, f_name='solution'):
-        pass
-
-
-    # fit and predict (input, target) for given pipeline
-    # Note: pipeline is appended with self._estimator as the final step
-    def _evaluate(self, individual):
-        input_matrix = deepcopy(self._X_train)
-        target = self._y_train
-        pipeline = self._compile_to_sklearn(individual=individual)
-        score = 0
-        try:
-            pipeline.fit(input_matrix, target)
-            y_pred = pipeline.predict(self._X_val)
-            score = roc_auc_score(self._y_val, y_pred)
-            dataframe = get_individual_config(self._pandas_columns, individual)
-            # print("Actual : ", score)
-            #self._predict_RL(dataframe)
-            # append individual pipeline config and score to dataframe, used for RL training
-            self._rl_dataframe = append_to_dataframe(self._rl_dataframe, self._pandas_columns, individual, score)
-            return score,
-        # Future Work: Handle these exceptions
-        except Exception as e:
-            self._rl_dataframe = append_to_dataframe(self._rl_dataframe, self._pandas_columns, individual, score)
-            return score,
-
-
     def _evolve(self):
+        """ Start evolution
+
+        Create Hall Of Fame, register statistics and start the evolution
+
+        :return:None
+        """
         print('Start of evolution')
         self._hof = tools.HallOfFame(3)
         stats = tools.Statistics(lambda ind: ind.fitness.values[0])
@@ -168,17 +177,22 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
         # Future Work: Export Hall of Fame individuals' sklearn-pipeline to a file
         self._solution_to_file()
 
-
-    # From a list of index tuples, create pandas dataframe
     def _create_dataframe(self):
+        """ From a list of index tuples, create pandas dataframe for the surrogate task
+
+        :return: None
+        """
         # target column for RL training
         self._pandas_columns.append('reward')
         self._rl_dataframe = pd.DataFrame(columns=self._pandas_columns)
 
-
-    # Train reinforcement learning
-    # Future Work: Use GridSearchCV instead of a bare estimator
     def _train_RL(self):
+        """ Train surrogate network for informed evolution
+
+        Future Work: Use GridSearchCV instead of a bare estimator
+
+        :return:None
+        """
         self._rl_dataframe = self._rl_dataframe.drop_duplicates()
         self._rl_dataframe = self._rl_dataframe.reset_index(drop=True)
         X = self._rl_dataframe.iloc[:, :-1].values
@@ -186,44 +200,77 @@ class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
         X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=10)
         self._reinforce_learner.fit(X_tr, y_tr)
         y_pr = self._reinforce_learner.predict(X_te)
-        print("RL score : ", scipy.stats.pearsonr(y_te, y_pr))
+        print("RL score : ", stats.pearsonr(y_te, y_pr))
 
-
-    # Predict reward from reinforcement learning
     def _predict_RL(self, dataframe):
+        """ predict fitness using surrogate network
+
+        :param dataframe: pandas dataframe object
+        :return: None
+        """
         X = dataframe.iloc[:, :-1].values
         ypred = self._reinforce_learner.predict(X)
         print("Predicted : ", ypred)
 
-
-    # Initialization steps
-    def _fit_init(self):
-        self._feature_count = self._X.shape[1]
-        # initial accuracy on the given dataset
-        self._estimator.fit(self._X_train, self._y_train)
-        y_pred = self._estimator.predict(self._X_val)
-        self._initial_score = roc_auc_score(self._y_val, y_pred)
-        print('Initial Best score : ', self._initial_score)
-        # setup toolbox for evolution
-        self._setup_pset()
-        # create dataframe for RL training
-        self._create_dataframe()
-        # create population
-        self._setup_toolbox()
-        # Future Work: Some of these ind are taking too much time. Inspect why!
-        # create population
-        self._pop = self._toolbox.population(self._pop_size)
-        # start evolution
-        self._evolve()
-
-
     def fit(self, X, y):
-        # Future Work: checking OneHotEncoding, datetime etc
+        """ Fit method for AFE
+
+        It sets up the primitive set, toolbox, creates surrogate dataframe, creates initial population and starts the
+        evolution. Future Work: checking OneHotEncoding, datetime etc
+
+
+        :param X: numpy ndarray input matrix [n_samples, n_features]
+        :param y: numpy ndarray target values
+        :return: None
+        """
         self._X = reshape_numpy(X)
         self._y = reshape_numpy(y)
-        self._X_train, self._X_val, self._y_train, self._y_val = train_test_split(self._X, self._y, test_size=0.2,
-                                                                                  random_state=10)
-        print('Dataset target distribution %s' % Counter(y))
-        self._fit_init()
-        print(self._hof[0])
-        return self._compile_to_sklearn(self._hof[0]), self._estimator
+        self._X_train, self._X_val, self._y_train, self._y_val = \
+            train_test_split(self._X, self._y, test_size=0.2, random_state=10)
+        self._feature_count = self._X.shape[1]
+        self._setup_pset()
+        self._create_dataframe()
+        self._setup_toolbox()
+        self._pop = self._toolbox.population(self._pop_size)
+        self._evolve()
+
+    def _evaluate(self, individual):
+        """ Evaluate the individual during evolution
+
+        Given an estimator and a scorer, evaluate the individual and append the individual config to surrogate training
+        dataframe. Future Work: Handle these exceptions.
+
+        :param individual:
+        :return: a tuple of score
+        """
+        input_matrix = deepcopy(self._X_train)
+        target = self._y_train
+        pipeline = self._compile_to_sklearn(individual=individual)
+        score = 0
+        try:
+            pipeline.fit(input_matrix, target)
+            y_pred = pipeline.predict(self._X_val)
+            score = self._scorer(self._y_val, y_pred)
+            self._rl_dataframe = append_to_dataframe(self._rl_dataframe, self._pandas_columns, individual, score)
+            return score, individual.height
+        except Exception as e:
+            self._rl_dataframe = append_to_dataframe(self._rl_dataframe, self._pandas_columns, individual, score)
+            return score, individual.height
+
+    @abc.abstractmethod
+    def predict(self, X=None, y=None):
+        """ abstract method,  Returns a pipeline that yields the best score for the given estimator and scorer
+
+        :param X: numpy ndarray input matrix [n_samples, n_features]
+        :param y: numpy ndarray target values
+        :return: a tuple of sklearn pipeline and a instance of estimator
+        """
+        pass
+
+    def _solution_to_file(self, f_name='solution'):
+        """ Future Work: Export best pipeline and the corresponding code to the file
+
+        :param f_name: string, file name
+        :return: None
+        """
+        pass
