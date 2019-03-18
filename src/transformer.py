@@ -11,15 +11,19 @@ from utils_ import reshape_numpy
 from copy import deepcopy
 
 # output class for scalers
-class ScaledArray(object):
+class ScaledArray(np.ndarray):
     pass
 
 # output class for selectors
-class SelectedArray(object):
+class SelectedArray(np.ndarray):
     pass
 
 # output class for extractors such as PCA
-class ExtractedArray(object):
+class ExtractedArray(np.ndarray):
+    pass
+
+# output class for classifiers
+class ClassifiedArray(np.ndarray):
     pass
 
 class ARGType(object):

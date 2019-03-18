@@ -3,7 +3,7 @@ __author__ = "Prashant Shivarm Bhat"
 __email__ = "PrashantShivaram@outlook.com"
 
 import numpy as np
-from transformer import ScaledArray, SelectedArray, ExtractedArray
+from transformer import ScaledArray, SelectedArray, ExtractedArray, ClassifiedArray
 from copy import deepcopy
 from collections import defaultdict
 from deap import tools, algorithms
@@ -12,22 +12,23 @@ from tqdm import tqdm
 
 # Future Work : Write decorator for checking whether generated individual is valid
 # Future Work: Reinforcement learning
-def grow_individual(pset, min_=3, max_=8):
-    height = np.random.randint(low=min_, high=max_)
+def grow_individual(pset, trans_types, min_=3, max_=8):
+    height = np.random.randint(low=len(trans_types), high=max_)
     individual = []
-    idx = 1
-    # Add unary operators if height is greater than 3
-    if height > 3:
+    idx = 0
+    # Add unary operators
+    if 'unary' in trans_types:
         # first 'unary' with input_matrix
         transformer = np.random.choice(pset.primitives[np.ndarray])
         individual.append(transformer)
-        for arg_type in transformer.args[0:]:
+        for arg_type in transformer.args[idx:]:
             terminal = np.random.choice(pset.terminals[arg_type])
             individual.append(terminal)
         height = height - 1
+        idx = 1
 
         # subsequent unary operators without input_matrix
-        while height > 3:
+        while height >= len(trans_types):
             prim = []
             transformer = np.random.choice(pset.primitives[np.ndarray])
             individual = [transformer] + individual
@@ -39,28 +40,34 @@ def grow_individual(pset, min_=3, max_=8):
             individual = individual + prim
             height = height - 1
 
-    elif height <= 3:
-        # np.ndarray is included only if it was not included before
-        idx = 0
-    # one scaler, one selector and one extractor is added to the tree
-    scaler = np.random.choice(pset.primitives[ScaledArray])
-    individual = [scaler] + individual
-    for arg_type in scaler.args[idx:]:
-        terminal = np.random.choice(pset.terminals[arg_type])
-        individual.append(terminal)
-
-    selector = np.random.choice(pset.primitives[SelectedArray])
-    individual = [selector] + individual
-    for arg_type in selector.args[1:]:
-        terminal = np.random.choice(pset.terminals[arg_type])
-        individual.append(terminal)
-
-    extractor = np.random.choice(pset.primitives[ExtractedArray])
-    individual = [extractor] + individual
-    for arg_type in extractor.args[1:]:
-        terminal = np.random.choice(pset.terminals[arg_type])
-        individual.append(terminal)
-
+    if 'scaler' in trans_types:
+        scaler = np.random.choice(pset.primitives[ScaledArray])
+        individual = [scaler] + individual
+        for arg_type in scaler.args[idx:]:
+            terminal = np.random.choice(pset.terminals[arg_type])
+            individual.append(terminal)
+        idx = 1
+    if 'selector' in trans_types:
+        selector = np.random.choice(pset.primitives[SelectedArray])
+        individual = [selector] + individual
+        for arg_type in selector.args[idx:]:
+            terminal = np.random.choice(pset.terminals[arg_type])
+            individual.append(terminal)
+        idx = 1
+    if 'extractor' in trans_types:
+        extractor = np.random.choice(pset.primitives[ExtractedArray])
+        individual = [extractor] + individual
+        for arg_type in extractor.args[idx:]:
+            terminal = np.random.choice(pset.terminals[arg_type])
+            individual.append(terminal)
+        idx = 1
+    if 'classifier' in trans_types:
+        classifier = np.random.choice(pset.primitives[ClassifiedArray])
+        individual = [classifier] + individual
+        for arg_type in classifier.args[idx:]:
+            terminal = np.random.choice(pset.terminals[arg_type])
+            individual.append(terminal)
+        idx = 1
     # individual as a list (iterable)
     return individual
 

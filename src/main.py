@@ -5,21 +5,16 @@ __email__ = "PrashantShivaram@outlook.com"
 import abc
 import random
 import warnings
-from collections import Counter
-
+import scipy
 import numpy as np
 import pandas as pd
-import scipy
 from deap import gp, creator, base, tools
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.metrics import accuracy_score, roc_auc_score
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
-
 from gp_ import grow_individual, mutate, cxOnePoint, eaMuPlusLambda
 from lookup import TransformerLookUp
-from transformer import TransformerClassGenerator, ScaledArray, SelectedArray, ExtractedArray
-from utils_ import reshape_numpy
+from transformer import TransformerClassGenerator, ScaledArray, SelectedArray, ExtractedArray, ClassifiedArray
 
 random.seed(10)
 np.random.seed(10)
@@ -27,8 +22,8 @@ np.random.seed(10)
 
 class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
 
-    def __init__(self, estimator, reinforce_learner, generation=5, pop_size=None, mutation_rate=0.3,
-                 crossover_rate=0.7, scorer=accuracy_score):
+    def __init__(self, estimator, reinforce_learner, generation, pop_size, mutation_rate,
+                 crossover_rate, scorer, inputArray, outputArray, trans_types):
         self._generation = generation
         self._pop_size = pop_size
         self._mutation_rate = mutation_rate
@@ -36,6 +31,9 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         self._estimator = estimator
         self._reinforce_learner = reinforce_learner
         self._scorer = scorer
+        self._inputArray = inputArray
+        self._outputArray = outputArray
+        self._trans_types = trans_types
         self._feature_count = None
         self._initial_score = None
         self._pop = None
@@ -46,38 +44,38 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         self._pandas_columns = None
 
     # create typed PrimitiveSet
-    def _setup_pset(self, outputArray=None, inputArray=None, trans_types=None):
-        if inputArray is None:
-            inputArray = [np.ndarray]
-        self._pset = gp.PrimitiveSetTyped('MAIN', inputArray, outputArray)
-        self._pset.renameArguments(ARG0='input_matrix')
-        trans_types = ['unary', 'scaler', 'selector', 'extractor']
-        lookup = TransformerLookUp(self._feature_count)
-        self._pandas_columns = []  # input features for RL training
-        for type_ in trans_types:
-            trans_lookup = lookup.get_lookup(type_)
-            # add transformers as primitives
-            for key in trans_lookup:
-                # add transformers to pset
-                transformer = TransformerClassGenerator(key, trans_lookup[key])
-                if type_ == 'unary':
-                    self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, np.ndarray)
-                elif type_ == 'scaler':
-                    self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, ScaledArray)
-                elif type_ == 'selector':
-                    self._pset.addPrimitive(transformer, [ScaledArray] + transformer.arg_types, SelectedArray)
-                elif type_ == 'extractor':
-                    self._pset.addPrimitive(transformer, [SelectedArray] + transformer.arg_types, ExtractedArray)
+    def _setup_pset(self):
+        if self._inputArray is not None and self._outputArray is not None and isinstance(self._trans_types, list):
+            self._pset = gp.PrimitiveSetTyped('MAIN', self._inputArray, self._outputArray)
+            self._pset.renameArguments(ARG0='input_matrix')
+            lookup = TransformerLookUp(self._feature_count)
+            self._pandas_columns = []  # input features for RL training
+            for type_ in self._trans_types:
+                trans_lookup = lookup.get_lookup(type_)
+                # add transformers as primitives
+                for key in trans_lookup:
+                    # add transformers to pset
+                    transformer = TransformerClassGenerator(key, trans_lookup[key])
+                    if type_ == 'unary':
+                        self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, np.ndarray)
+                    elif type_ == 'scaler':
+                        self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, ScaledArray)
+                    elif type_ == 'selector':
+                        self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, SelectedArray)
+                    elif type_ == 'extractor':
+                        self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, ExtractedArray)
+                    elif type_ == 'classifier':
+                        self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, ClassifiedArray)
 
-                # add transformer arguments as terminal
-                # arg_types is a list
-                for arg in transformer.arg_types:
-                    values = list(arg.values)
-                    for val in values:
-                        arg_name = arg.__name__ + "=" + str(val)
-                        self._pset.addTerminal(val, arg, name=arg_name)
-                        # input features for RL training
-                        self._pandas_columns.append(arg_name)
+                    # add transformer arguments as terminal
+                    # arg_types is a list
+                    for arg in transformer.arg_types:
+                        values = list(arg.values)
+                        for val in values:
+                            arg_name = arg.__name__ + "=" + str(val)
+                            self._pset.addTerminal(val, arg, name=arg_name)
+                            # input features for RL training
+                            self._pandas_columns.append(arg_name)
 
     def _setup_toolbox(self):
         with warnings.catch_warnings():
@@ -85,7 +83,7 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
             creator.create('FitnessMax', base.Fitness, weights=(1.0,))
             creator.create('Individual', gp.PrimitiveTree, fitness=creator.FitnessMax, statistics=dict)
         self._toolbox = base.Toolbox()
-        self._toolbox.register('expr', grow_individual, pset=self._pset, min_=1, max_=8)
+        self._toolbox.register('expr', grow_individual, pset=self._pset, trans_types=self._trans_types, min_=1, max_=8)
         self._toolbox.register('individual', tools.initIterate, creator.Individual, self._toolbox.expr)
         self._toolbox.register('population', tools.initRepeat, list, self._toolbox.individual)
         self._toolbox.register('evaluate', self._evaluate)
@@ -126,6 +124,7 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
 
     # fit and predict (input, target) for given pipeline
     # Note: pipeline is appended with self._estimator as the final step
+    @abc.abstractmethod
     def _evaluate(self, individual):
         pass
 
@@ -168,33 +167,10 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         ypred = self._reinforce_learner.predict(X)
         print("Predicted : ", ypred)
 
-    # Initialization steps
-    def _fit_init(self):
-        self._feature_count = self._X.shape[1]
-        # initial accuracy on the given dataset
-        self._estimator.fit(self._X_train, self._y_train)
-        y_pred = self._estimator.predict(self._X_val)
-        self._initial_score = roc_auc_score(self._y_val, y_pred)
-        print('Initial Best score : ', self._initial_score)
-        # setup toolbox for evolution
-        self._setup_pset()
-        # create dataframe for RL training
-        self._create_dataframe()
-        # create population
-        self._setup_toolbox()
-        # Future Work: Some of these ind are taking too much time. Inspect why!
-        # create population
-        self._pop = self._toolbox.population(self._pop_size)
-        # start evolution
-        self._evolve()
-
+    @abc.abstractmethod
     def fit(self, X, y):
-        # Future Work: checking OneHotEncoding, datetime etc
-        self._X = reshape_numpy(X)
-        self._y = reshape_numpy(y)
-        self._X_train, self._X_val, self._y_train, self._y_val = train_test_split(self._X, self._y, test_size=0.2,
-                                                                                  random_state=10)
-        print('Dataset target distribution %s' % Counter(y))
-        self._fit_init()
-        print(self._hof[0])
-        return self._compile_to_sklearn(self._hof[0]), self._estimator
+        pass
+
+    @abc.abstractmethod
+    def predict(self):
+        pass

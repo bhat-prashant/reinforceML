@@ -8,8 +8,12 @@ from sklearn.preprocessing import KBinsDiscretizer, StandardScaler, MaxAbsScaler
     PolynomialFeatures, PowerTransformer, QuantileTransformer, RobustScaler
 from sklearn.feature_selection import SelectKBest, SelectFromModel, SelectPercentile, SelectFpr, SelectFdr, \
     VarianceThreshold, SelectFwe, RFE, RFECV, chi2, f_classif
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.svm import LinearSVC
+from sklearn.naive_bayes import GaussianNB, BernoulliNB, MultinomialNB
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import LinearSVC, SVC
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, ExtraTreesClassifier
+from sklearn.tree import DecisionTreeClassifier
 
 from transformer import AddReinforce, SubtractReinforce, KBinsDiscretizerReinforce, EmptyTransformer, \
     PCAReinforce, MultiplyReinforce, DivideReinforce, LogReinforce
@@ -19,7 +23,6 @@ class TransformerLookUp:
     def __init__(self, X_col):
         self._X_col = X_col
         self._create_transformers()
-
 
     # transformer lookup. Must contain all required parameters
     # Future Work : Dynamically import required classes using 'importlib.import_module'
@@ -33,6 +36,8 @@ class TransformerLookUp:
             return self._universal_selectors
         elif trans_type == 'extractor':
             return self._universal_extractors
+        elif trans_type == 'classifier':
+            return self._classifiers
 
     def _create_transformers(self):
         self._unary_transformers = {
@@ -46,13 +51,13 @@ class TransformerLookUp:
 
             'AddReinforce': {
                 'transformer': AddReinforce,
-                'params': {'index0':np.arange(0, self._X_col, 1),
+                'params': {'index0': np.arange(0, self._X_col, 1),
                            'index1': np.arange(0, self._X_col, 1)}
             },
 
             'SubtractReinforce': {
                 'transformer': SubtractReinforce,
-                'params': {'index0':np.arange(0, self._X_col, 1),
+                'params': {'index0': np.arange(0, self._X_col, 1),
                            'index1': np.arange(0, self._X_col, 1)}
             },
 
@@ -83,7 +88,7 @@ class TransformerLookUp:
             'StandardScaler': {
                 'transformer': StandardScaler,
                 'params': {'with_mean': [True, False],
-                          'with_std': [True, False]}
+                           'with_std': [True, False]}
             },
             'MaxAbsScaler': {
                 'transformer': MaxAbsScaler,
@@ -91,7 +96,7 @@ class TransformerLookUp:
             },
             'MinMaxScaler': {
                 'transformer': MinMaxScaler,
-                'params': {'feature_range': [(0,1), (-1,1)]}
+                'params': {'feature_range': [(0, 1), (-1, 1)]}
             },
             'Normalizer': {
                 'transformer': Normalizer,
@@ -118,7 +123,7 @@ class TransformerLookUp:
                 'transformer': EmptyTransformer,
                 'params': {}
             }
-    
+
         }
 
         self._universal_selectors = {
@@ -127,7 +132,7 @@ class TransformerLookUp:
                 'params': {'score_func': [chi2, f_classif],
                            'k': np.arange(int(self._X_col / 2), self._X_col - 1, 1)}
             },
-    
+
             'SelectFromModel': {
                 'transformer': SelectFromModel,
                 'params': {'estimator': [RandomForestClassifier(n_estimators=10, random_state=10),
@@ -163,7 +168,7 @@ class TransformerLookUp:
                 'transformer': EmptyTransformer,
                 'params': {}
             }
-    
+
         }
 
         self._universal_extractors = {
@@ -179,3 +184,74 @@ class TransformerLookUp:
             }
         }
 
+        self._classifiers = {
+            'GaussianNB': {
+                'transformer': GaussianNB,
+                'params': {}
+            },
+            'BernoulliNB': {
+                'transformer': BernoulliNB,
+                'params': {'alpha': [1e-3, 1e-2, 1e-1, 1., 10., 100.],
+                           'fit_prior': [True, False]}
+            },
+            'MultinomialNB': {
+                'transformer': MultinomialNB,
+                'params': {'alpha': [1e-3, 1e-2, 1e-1, 1., 10., 100.],
+                           'fit_prior': [True, False]}
+            },
+            'DecisionTreeClassifier': {
+                'transformer': DecisionTreeClassifier,
+                'params': {'criterion': ["gini", "entropy"],
+                           'max_depth': range(1, 11),
+                           'min_samples_split': range(2, 21),
+                           'min_samples_leaf': range(1, 21)}
+            },
+            'ExtraTreesClassifier': {
+                'transformer': ExtraTreesClassifier,
+                'params': {'n_estimators': [100],
+                           'criterion': ["gini", "entropy"],
+                           'max_features': np.arange(0.05, 1.01, 0.05),
+                           'min_samples_split': range(2, 21),
+                           'min_samples_leaf': range(1, 21),
+                           'bootstrap': [True, False]}
+            },
+            'RandomForestClassifier': {
+                'transformer': RandomForestClassifier,
+                'params': {'n_estimators': [100],
+                           'criterion': ["gini", "entropy"],
+                           'max_features': np.arange(0.05, 1.01, 0.05),
+                           'min_samples_split': range(2, 21),
+                           'min_samples_leaf': range(1, 21),
+                           'bootstrap': [True, False]}
+            },
+            'GradientBoostingClassifier': {
+                'transformer': GradientBoostingClassifier,
+                'params': {'n_estimators': [100],
+                           'learning_rate': [1e-3, 1e-2, 1e-1, 0.5, 1.],
+                           'max_depth': range(1, 11),
+                           'min_samples_split': range(2, 21),
+                           'min_samples_leaf': range(1, 21),
+                           'subsample': np.arange(0.05, 1.01, 0.05),
+                           'max_features': np.arange(0.05, 1.01, 0.05)}
+            },
+            'KNeighborsClassifier': {
+                'transformer': KNeighborsClassifier,
+                'params': {'n_neighbors': range(1, 101),
+                           'weights': ["uniform", "distance"],
+                           'p': [1, 2]}
+            },
+            'LinearSVC': {
+                'transformer': LinearSVC,
+                'params': {'penalty': ["l1", "l2"],
+                           'loss': ["hinge", "squared_hinge"],
+                           'dual': [True, False],
+                           'tol': [1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
+                           'C': [1e-4, 1e-3, 1e-2, 1e-1, 0.5, 1., 5., 10., 15., 20., 25.]}
+            },
+            'LogisticRegression': {
+                'transformer': LogisticRegression,
+                'params': {'penalty': ["l1", "l2"],
+                           'C': [1e-4, 1e-3, 1e-2, 1e-1, 0.5, 1., 5., 10., 15., 20., 25.],
+                           'dual': [True, False]}
+            }
+        }

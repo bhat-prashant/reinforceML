@@ -33,8 +33,7 @@ from transformer import TransformerClassGenerator, ScaledArray, SelectedArray, E
 class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
 
     def __init__(self, generation=5, pop_size=None, mutation_rate=0.3,
-                 crossover_rate=0.7, scorer=accuracy_score, upsample=False,
-                 downsample=False, random_state=None, verbosity=0, subsample=None, append_original=True):
+                 crossover_rate=0.7, scorer=accuracy_score):
         self._generation = generation
         self._pop_size = pop_size
         self._mutation_rate = mutation_rate
