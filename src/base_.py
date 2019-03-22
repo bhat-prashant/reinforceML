@@ -4,6 +4,8 @@ __email__ = "PrashantShivaram@outlook.com"
 
 import abc
 import random
+
+random.seed(10)
 import warnings
 import numpy as np
 import pandas as pd
@@ -13,19 +15,17 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
 from gp_ import grow_individual, mutate, cxOnePoint, eaMuPlusLambda
-from utils_ import append_to_dataframe, get_individual_config, reshape_numpy
+from utils_ import append_to_dataframe, reshape_numpy
 from lookup import TransformerLookUp
 from transformer import TransformerClassGenerator, ScaledArray, SelectedArray, ExtractedArray, ClassifiedArray
 from scipy import stats
-import multiprocessing
-random.seed(10)
-np.random.seed(10)
+
 
 
 class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
 
     def __init__(self, estimator, reinforce_learner, feateng, generation, pop_size, mutation_rate,
-                 crossover_rate, scorer, inputArray, outputArray, trans_types):
+                 crossover_rate, scorer, inputArray, outputArray, trans_types, random_state):
         """ Base class for tree based evolution
 
         :param estimator: an instance of sklearn estimator
@@ -42,6 +42,8 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         :param inputArray: Input array type for primitive set, default to np.ndarray
         :param outputArray: Ouput array type for primitive set
         :param trans_types: list of transformers to be used during evolution
+        :param random_seed: int,
+                random seed for numpy and random libs
         """
         self._generation = generation
         self._pop_size = pop_size
@@ -54,6 +56,7 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         self._inputArray = inputArray
         self._outputArray = outputArray
         self._trans_types = trans_types
+        self._random_state = random_state
         self._feature_count = None
         self._initial_score = None
         self._pop = None
@@ -62,6 +65,7 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         self._y = None
         self._pset = None
         self._pandas_columns = None
+
 
     def _setup_pset(self):
         """ creates a typed PrimitiveSet
@@ -74,7 +78,7 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         if self._inputArray is not None and self._outputArray is not None and isinstance(self._trans_types, list):
             self._pset = gp.PrimitiveSetTyped('MAIN', self._inputArray, self._outputArray)
             self._pset.renameArguments(ARG0='input_matrix')
-            lookup = TransformerLookUp(self._feature_count)
+            lookup = TransformerLookUp(self._feature_count, self._random_state)
             self._pandas_columns = []  # input features for RL training
             for type_ in self._trans_types:
                 trans_lookup = lookup.get_lookup(type_)
@@ -115,13 +119,14 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
             creator.create('FitnessMulti', base.Fitness, weights=(1.0,-0.4))
             creator.create('Individual', gp.PrimitiveTree, fitness=creator.FitnessMulti, statistics=dict)
         self._toolbox = base.Toolbox()
-        self._toolbox.register('expr', grow_individual, pset=self._pset, trans_types=self._trans_types, min_=1, max_=8)
+        self._toolbox.register('expr', grow_individual, pset=self._pset, trans_types=self._trans_types,
+                               random_state=self._random_state, max_=8)
         self._toolbox.register('individual', tools.initIterate, creator.Individual, self._toolbox.expr)
         self._toolbox.register('population', tools.initRepeat, list, self._toolbox.individual)
         self._toolbox.register('evaluate', self._evaluate)
         self._toolbox.register('select', tools.selBest)
-        self._toolbox.register('mate', cxOnePoint)
-        self._toolbox.register('mutate', mutate, self._pset)
+        self._toolbox.register('mate', cxOnePoint, self._random_state)
+        self._toolbox.register('mutate', mutate, self._pset, self._random_state)
         self._toolbox.register('train_RL', self._train_RL)
 
     def _compile_to_sklearn(self, individual):
@@ -197,7 +202,7 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         self._rl_dataframe = self._rl_dataframe.reset_index(drop=True)
         X = self._rl_dataframe.iloc[:, :-1].values
         y = self._rl_dataframe.iloc[:, -1].values
-        X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=10)
+        X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=self._random_state)
         self._reinforce_learner.fit(X_tr, y_tr)
         y_pr = self._reinforce_learner.predict(X_te)
         print("RL score : ", stats.pearsonr(y_te, y_pr))
@@ -226,7 +231,7 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         self._X = reshape_numpy(X)
         self._y = reshape_numpy(y)
         self._X_train, self._X_val, self._y_train, self._y_val = \
-            train_test_split(self._X, self._y, test_size=0.2, random_state=10)
+            train_test_split(self._X, self._y, test_size=0.2, random_state=self._random_state)
         self._feature_count = self._X.shape[1]
         self._setup_pset()
         self._create_dataframe()

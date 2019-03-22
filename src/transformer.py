@@ -2,13 +2,15 @@
 __author__ = "Prashant Shivarm Bhat"
 __email__ = "PrashantShivaram@outlook.com"
 
-from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.preprocessing import KBinsDiscretizer
-from sklearn.decomposition import PCA
+from copy import deepcopy
 
 import numpy as np
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import KBinsDiscretizer
+
 from utils_ import reshape_numpy
-from copy import deepcopy
+
 
 # output class for scalers
 class ScaledArray(np.ndarray):
@@ -114,9 +116,11 @@ class PCAReinforce(BaseReinforceTransformer):
         n_components = self.args['n_components']
         whiten = self.args['whiten']
         svd_solver = self.args['svd_solver']
+        random_state = self.args['random_state']
         if n_components >= X.shape[1]:
             n_components = X.shape[1]-1
-        transformed_X = PCA(n_components=n_components, whiten=whiten, svd_solver=svd_solver).fit_transform(X, y)
+        transformed_X = PCA(n_components=n_components, whiten=whiten, random_state=random_state,
+                            svd_solver=svd_solver).fit_transform(X, y)
         return transformed_X
 
 

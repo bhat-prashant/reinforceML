@@ -2,12 +2,11 @@
 __author__ = "Prashant Shivarm Bhat"
 __email__ = "PrashantShivaram@outlook.com"
 import time
-import pandas as pd
+
 start = time.time()
 from sklearn.model_selection import train_test_split
-from reinforce_ import ReinforceFeatureEngineer, ReinforceClassifier
-from sklearn.metrics import accuracy_score, roc_auc_score
-from sklearn.datasets import load_boston, load_diabetes, load_digits
+from reinforce_ import ReinforceClassifier
+from sklearn.datasets import load_digits
 # data  = pd.read_csv('../data/pathmate.csv', header=None)
 # X = data.iloc[:, :-1].values
 # y = data.iloc[:, -1].values
@@ -18,6 +17,9 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 feat = ReinforceClassifier(pop_size=10, generation=5,)# target_type='regression'
 feat.fit(X_train, y_train)
 pipeline = feat.predict()
+
+print()
+
 
 # # original dataset
 # estimator.fit(X_train, y_train)

@@ -3,16 +3,14 @@ __author__ = "Prashant Shivarm Bhat"
 __email__ = "PrashantShivaram@outlook.com"
 
 import numpy as np
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import KBinsDiscretizer, StandardScaler, MaxAbsScaler, MinMaxScaler, Normalizer, \
-    PolynomialFeatures, PowerTransformer, QuantileTransformer, RobustScaler
-from sklearn.feature_selection import SelectKBest, SelectFromModel, SelectPercentile, SelectFpr, SelectFdr, \
-    VarianceThreshold, SelectFwe, RFE, RFECV, chi2, f_classif
-from sklearn.naive_bayes import GaussianNB, BernoulliNB, MultinomialNB
-from sklearn.linear_model import LogisticRegression
-from sklearn.svm import LinearSVC, SVC
-from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, ExtraTreesClassifier
+from sklearn.feature_selection import SelectKBest, SelectFromModel, VarianceThreshold, RFE, RFECV, chi2, f_classif
+from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import GaussianNB, BernoulliNB, MultinomialNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import StandardScaler, MaxAbsScaler, MinMaxScaler, Normalizer, \
+    PolynomialFeatures, QuantileTransformer, RobustScaler
+from sklearn.svm import LinearSVC
 from sklearn.tree import DecisionTreeClassifier
 
 from transformer import AddReinforce, SubtractReinforce, KBinsDiscretizerReinforce, EmptyTransformer, \
@@ -20,8 +18,9 @@ from transformer import AddReinforce, SubtractReinforce, KBinsDiscretizerReinfor
 
 
 class TransformerLookUp:
-    def __init__(self, X_col):
+    def __init__(self, X_col, random_state):
         self._X_col = X_col
+        self._random_state = random_state
         self._create_transformers()
 
     # transformer lookup. Must contain all required parameters
@@ -112,7 +111,8 @@ class TransformerLookUp:
             'QuantileTransformer': {
                 'transformer': QuantileTransformer,
                 'params': {'n_quantiles': [2, 3, 4],
-                           'output_distribution': ['uniform', 'normal']}
+                           'output_distribution': ['uniform', 'normal'],
+                           'random_state': [self._random_state]}
             },
             'RobustScaler': {
                 'transformer': RobustScaler,
@@ -135,15 +135,16 @@ class TransformerLookUp:
 
             'SelectFromModel': {
                 'transformer': SelectFromModel,
-                'params': {'estimator': [RandomForestClassifier(n_estimators=10, random_state=10),
-                                         GradientBoostingClassifier(n_estimators=10, random_state=10)],
+                'params': {'estimator': [RandomForestClassifier(n_estimators=10, random_state=self._random_state),
+                                         GradientBoostingClassifier(n_estimators=10, random_state=self._random_state)],
                            'threshold': ['mean', 'median', '0.5*mean']}
             },
 
             'RFE': {
                 'transformer': RFE,
-                'params': {'estimator': [RandomForestClassifier(n_estimators=10, random_state=10, n_jobs=-1),
-                                         GradientBoostingClassifier(n_estimators=10, random_state=10)],
+                'params': {
+                    'estimator': [RandomForestClassifier(n_estimators=10, random_state=self._random_state, n_jobs=-1),
+                                  GradientBoostingClassifier(n_estimators=10, random_state=self._random_state)],
                            'n_features_to_select': np.arange(int(self._X_col / 2), self._X_col - 1, 1)}
 
             },
@@ -152,8 +153,9 @@ class TransformerLookUp:
             # Future work: manage n_jobs globally
             'RFECV': {
                 'transformer': RFECV,
-                'params': {'estimator': [RandomForestClassifier(n_estimators=10, random_state=10, n_jobs=-1),
-                                         GradientBoostingClassifier(n_estimators=10, random_state=10)],
+                'params': {
+                    'estimator': [RandomForestClassifier(n_estimators=10, random_state=self._random_state, n_jobs=-1),
+                                  GradientBoostingClassifier(n_estimators=10, random_state=self._random_state)],
                            'min_features_to_select': np.arange(int(self._X_col / 2), self._X_col - 1, 1),
                            'cv': [3, 5, 7],
                            'n_jobs': [-1]}
@@ -176,7 +178,8 @@ class TransformerLookUp:
                 'transformer': PCAReinforce,
                 'params': {'n_components': np.arange(int(self._X_col / 2), self._X_col, 1),
                            'whiten': [True, False],
-                           'svd_solver': ['auto', 'full', 'arpack', 'randomized']}
+                           'svd_solver': ['auto', 'full', 'arpack', 'randomized'],
+                           'random_state': [self._random_state]}
             },
             'EmptyExtractor': {
                 'transformer': EmptyTransformer,
@@ -204,7 +207,8 @@ class TransformerLookUp:
                 'params': {'criterion': ["gini", "entropy"],
                            'max_depth': range(1, 11),
                            'min_samples_split': range(2, 21),
-                           'min_samples_leaf': range(1, 21)}
+                           'min_samples_leaf': range(1, 21),
+                           'random_state': [self._random_state]}
             },
             'ExtraTreesClassifier': {
                 'transformer': ExtraTreesClassifier,
@@ -213,7 +217,8 @@ class TransformerLookUp:
                            'max_features': np.arange(0.05, 1.01, 0.05),
                            'min_samples_split': range(2, 21),
                            'min_samples_leaf': range(1, 21),
-                           'bootstrap': [True, False]}
+                           'bootstrap': [True, False],
+                           'random_state': [self._random_state]}
             },
             'RandomForestClassifier': {
                 'transformer': RandomForestClassifier,
@@ -222,7 +227,8 @@ class TransformerLookUp:
                            'max_features': np.arange(0.05, 1.01, 0.05),
                            'min_samples_split': range(2, 21),
                            'min_samples_leaf': range(1, 21),
-                           'bootstrap': [True, False]}
+                           'bootstrap': [True, False],
+                           'random_state': [self._random_state]}
             },
             'GradientBoostingClassifier': {
                 'transformer': GradientBoostingClassifier,
@@ -232,7 +238,8 @@ class TransformerLookUp:
                            'min_samples_split': range(2, 21),
                            'min_samples_leaf': range(1, 21),
                            'subsample': np.arange(0.05, 1.01, 0.05),
-                           'max_features': np.arange(0.05, 1.01, 0.05)}
+                           'max_features': np.arange(0.05, 1.01, 0.05),
+                           'random_state': [self._random_state]}
             },
             'KNeighborsClassifier': {
                 'transformer': KNeighborsClassifier,
@@ -247,7 +254,8 @@ class TransformerLookUp:
                            'dual': [True, False],
                            'tol': [1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
                            'C': [1e-4, 1e-3, 1e-2, 1e-1, 0.5, 1., 5., 10., 15., 20., 25.],
-                           'max_iter': [100000]}
+                           'max_iter': [100000],
+                           'random_state': [self._random_state]}
             },
             'LogisticRegression': {
                 'transformer': LogisticRegression,
@@ -256,6 +264,7 @@ class TransformerLookUp:
                            'dual': [True, False],
                            'solver': ['sag'],
                            'max_iter': [100000],
-                           'multi_class': ['auto']}
+                           'multi_class': ['auto'],
+                           'random_state': [self._random_state]}
             }
         }

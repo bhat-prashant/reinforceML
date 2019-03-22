@@ -2,27 +2,29 @@
 __author__ = "Prashant Shivarm Bhat"
 __email__ = "PrashantShivaram@outlook.com"
 
-import numpy as np
-from transformer import ScaledArray, SelectedArray, ExtractedArray, ClassifiedArray
-from copy import deepcopy
 from collections import defaultdict
+from copy import deepcopy
+
+import numpy as np
 from deap import tools, algorithms
 from tqdm import tqdm
+
+from transformer import ScaledArray, SelectedArray, ExtractedArray, ClassifiedArray
 
 
 # Future Work : Write decorator for checking whether generated individual is valid
 # Future Work: Reinforcement learning
-def grow_individual(pset, trans_types, min_=3, max_=8):
-    height = np.random.randint(low=len(trans_types), high=max_)
+def grow_individual(pset, trans_types, random_state, max_=8):
+    height = random_state.randint(low=len(trans_types), high=max_)
     individual = []
     idx = 0
     # Add unary operators
     if 'unary' in trans_types:
         # first 'unary' with input_matrix
-        transformer = np.random.choice(pset.primitives[np.ndarray])
+        transformer = random_state.choice(pset.primitives[np.ndarray])
         individual.append(transformer)
         for arg_type in transformer.args[idx:]:
-            terminal = np.random.choice(pset.terminals[arg_type])
+            terminal = random_state.choice(pset.terminals[arg_type])
             individual.append(terminal)
         height = height - 1
         idx = 1
@@ -30,42 +32,42 @@ def grow_individual(pset, trans_types, min_=3, max_=8):
         # subsequent unary operators without input_matrix
         while height >= len(trans_types):
             prim = []
-            transformer = np.random.choice(pset.primitives[np.ndarray])
+            transformer = random_state.choice(pset.primitives[np.ndarray])
             individual = [transformer] + individual
             # input_matrix is skipped since it was included before
             for arg_type in transformer.args[1:]:
-                terminal = np.random.choice(pset.terminals[arg_type])
+                terminal = random_state.choice(pset.terminals[arg_type])
                 prim.append(terminal)
             # append to the primitive list
             individual = individual + prim
             height = height - 1
 
     if 'scaler' in trans_types:
-        scaler = np.random.choice(pset.primitives[ScaledArray])
+        scaler = random_state.choice(pset.primitives[ScaledArray])
         individual = [scaler] + individual
         for arg_type in scaler.args[idx:]:
-            terminal = np.random.choice(pset.terminals[arg_type])
+            terminal = random_state.choice(pset.terminals[arg_type])
             individual.append(terminal)
         idx = 1
     if 'selector' in trans_types:
-        selector = np.random.choice(pset.primitives[SelectedArray])
+        selector = random_state.choice(pset.primitives[SelectedArray])
         individual = [selector] + individual
         for arg_type in selector.args[idx:]:
-            terminal = np.random.choice(pset.terminals[arg_type])
+            terminal = random_state.choice(pset.terminals[arg_type])
             individual.append(terminal)
         idx = 1
     if 'extractor' in trans_types:
-        extractor = np.random.choice(pset.primitives[ExtractedArray])
+        extractor = random_state.choice(pset.primitives[ExtractedArray])
         individual = [extractor] + individual
         for arg_type in extractor.args[idx:]:
-            terminal = np.random.choice(pset.terminals[arg_type])
+            terminal = random_state.choice(pset.terminals[arg_type])
             individual.append(terminal)
         idx = 1
     if 'classifier' in trans_types:
-        classifier = np.random.choice(pset.primitives[ClassifiedArray])
+        classifier = random_state.choice(pset.primitives[ClassifiedArray])
         individual = [classifier] + individual
         for arg_type in classifier.args[idx:]:
-            terminal = np.random.choice(pset.terminals[arg_type])
+            terminal = random_state.choice(pset.terminals[arg_type])
             individual.append(terminal)
         idx = 1
     # individual as a list (iterable)
@@ -74,7 +76,7 @@ def grow_individual(pset, trans_types, min_=3, max_=8):
 
 # mutate an individual during evolution by randomly replacing parameters
 # Future Work : allow individual to grow, shrink during mutation
-def mutate(pset, ind):
+def mutate(pset, random_state, ind):
     individual = deepcopy(ind)
     # always ind[height] represents input_matrix
     pos = individual.height + 1         # terminal position
@@ -82,16 +84,17 @@ def mutate(pset, ind):
     while idx >= 0:
         for arg_type in individual[idx].args[1:]:
             # pick a random parameter and replace
-            individual[pos] = np.random.choice(pset.terminals[arg_type])
+            individual[pos] = random_state.choice(pset.terminals[arg_type])
             pos += 1
         idx -= 1
     return individual,
 
 
 # borrowed from tpot, credits: tpot
-def cxOnePoint(ind1, ind2):
+def cxOnePoint(random_state, ind1, ind2):
     """Randomly select in each individual and exchange each subtree with the
     point as root between each individual.
+    :param random_state: random state
     :param ind1: First tree participating in the crossover.
     :param ind2: Second tree participating in the crossover.
     :returns: A tuple of two trees.
@@ -109,10 +112,10 @@ def cxOnePoint(ind1, ind2):
         types2[node.ret].append(idx)
 
     if len(common_types) > 0:
-        type_ = np.random.choice(common_types)
+        type_ = random_state.choice(common_types)
 
-        index1 = np.random.choice(types1[type_])
-        index2 = np.random.choice(types2[type_])
+        index1 = random_state.choice(types1[type_])
+        index2 = random_state.choice(types2[type_])
 
         slice1 = ind1.searchSubtree(index1)
         slice2 = ind2.searchSubtree(index2)
