@@ -97,6 +97,9 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
                     elif type_ == 'classifier':
                         self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, ClassifiedArray)
 
+                    # input features for RL training
+                    self._pandas_columns.append(key)
+
                     # add transformer arguments as terminal
                     # arg_types is a list
                     for arg in transformer.arg_types:
@@ -104,8 +107,7 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
                         for val in values:
                             arg_name = arg.__name__ + "=" + str(val)
                             self._pset.addTerminal(val, arg, name=arg_name)
-                            # input features for RL training
-                            self._pandas_columns.append(arg_name)
+
 
     def _setup_toolbox(self):
         """ sets up toolbox for evolution

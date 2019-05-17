@@ -3,9 +3,7 @@ __author__ = "Prashant Shivarm Bhat"
 __email__ = "PrashantShivaram@outlook.com"
 
 import warnings
-
 from sklearn.exceptions import DataConversionWarning
-
 warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 from base_ import BaseReinforceML
 from sklearn.ensemble import RandomForestRegressor

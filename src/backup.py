@@ -1,15 +1,10 @@
 #!/usr/bin/env python
 __author__ = "Prashant Shivarm Bhat"
 __email__ = "PrashantShivaram@outlook.com"
-import time
 
-start = time.time()
 from sklearn.model_selection import train_test_split
 from reinforce_ import ReinforceClassifier
 from sklearn.datasets import load_digits
-# data  = pd.read_csv('../data/pathmate.csv', header=None)
-# X = data.iloc[:, :-1].values
-# y = data.iloc[:, -1].values
 
 X, y = load_digits(return_X_y=True)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=10)
@@ -17,21 +12,3 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 feat = ReinforceClassifier(pop_size=10, generation=5,)# target_type='regression'
 feat.fit(X_train, y_train)
 pipeline = feat.predict()
-
-print()
-
-
-# # original dataset
-# estimator.fit(X_train, y_train)
-# y_pred = estimator.predict(X_test)
-# initauc = roc_auc_score(y_test, y_pred)
-#
-# # transformed  dataset
-# pipeline.fit(X_train, y_train)
-# y_pred_t = pipeline.predict(X_test)
-# finalauc= roc_auc_score(y_test, y_pred_t)
-# print('initial auc {} and final auc {}'.format(initauc, finalauc))
-# error = ((1-initauc)-(1-finalauc)) / (1-initauc)
-# print('Error Reduction: ', error*100)
-
-
