@@ -18,8 +18,6 @@ from gp_ import grow_individual, mutate, cxOnePoint, eaMuPlusLambda
 from utils_ import append_to_dataframe, reshape_numpy
 from lookup import TransformerLookUp
 from transformer import TransformerClassGenerator, ScaledArray, SelectedArray, ExtractedArray, ClassifiedArray
-from scipy import stats
-
 
 
 class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
@@ -205,7 +203,6 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=self._random_state)
         self._reinforce_learner.fit(X_tr, y_tr)
         y_pr = self._reinforce_learner.predict(X_te)
-        print("RL score : ", stats.pearsonr(y_te, y_pr))
 
     def _predict_RL(self, dataframe):
         """ predict fitness using surrogate network
@@ -215,7 +212,6 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         """
         X = dataframe.iloc[:, :-1].values
         ypred = self._reinforce_learner.predict(X)
-        print("Predicted : ", ypred)
 
     def fit(self, X, y):
         """ Fit method for AFE
