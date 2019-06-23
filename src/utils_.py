@@ -3,7 +3,6 @@ __author__ = "Prashant Shivarm Bhat"
 __email__ = "PrashantShivaram@outlook.com"
 
 import numpy as np
-import pandas as pd
 
 
 def reshape_data(individual):
@@ -16,22 +15,17 @@ def reshape_numpy(ndarray):
     return ndarray
 
 
-# Append individual's transformers to pandas dataframe, later user for RL training
-def append_to_dataframe(dataframe, columns, individual, score):
-    row = dict((el,[0]) for el in columns)
-    idx = individual.height + 2
-    for terminal in individual[idx:]:
-        row[terminal.name] = [1]
-    row[columns[-1]] = [score] # update reward
-    df_row = pd.DataFrame.from_dict(row, orient='columns')
-    return pd.concat([dataframe, df_row], sort=False)
+def _grow_replay():
+    """ Add an entry into replay memory
 
+    :return: None
+    """
+    a = [1, 2, 3, 4]
+    # self._replay.add(a)
 
-# Append individual's transformers to pandas dataframe, later user for RL training
 def get_individual_config(columns, individual):
-    row = dict((el,[0]) for el in columns)
-    idx = individual.height + 2
+    state = dict((el, 0) for el in columns)
+    idx = individual.height + 1
     for terminal in individual[idx:]:
-        row[terminal.name] = [1]
-    return pd.DataFrame.from_dict(row, orient='columns')
-
+        state[terminal.name] = 1
+    return list(state.values())

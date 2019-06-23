@@ -10,6 +10,7 @@ from deap import tools, algorithms
 from tqdm import tqdm
 
 from transformer import ScaledArray, SelectedArray, ExtractedArray, ClassifiedArray
+from utils_ import get_individual_config
 
 
 # Future Work : Write decorator for checking whether generated individual is valid
@@ -76,7 +77,8 @@ def grow_individual(pset, trans_types, random_state, max_=8):
 
 # mutate an individual during evolution by randomly replacing parameters
 # Future Work : allow individual to grow, shrink during mutation
-def mutate(pset, random_state, ind):
+def mutate(base_reinforce, ind):
+    current_state = get_individual_config(base_reinforce._columns, ind)
     individual = deepcopy(ind)
     # always ind[height] represents input_matrix
     pos = individual.height + 1         # terminal position
@@ -84,9 +86,13 @@ def mutate(pset, random_state, ind):
     while idx >= 0:
         for arg_type in individual[idx].args[1:]:
             # pick a random parameter and replace
-            individual[pos] = random_state.choice(pset.terminals[arg_type])
+            individual[pos] = base_reinforce._random_state.choice(base_reinforce._pset.terminals[arg_type])
             pos += 1
         idx -= 1
+    next_state = get_individual_config(base_reinforce._columns, individual)
+    reward = 0
+    action = [1 if i > j else 0 for i, j in zip(next_state, current_state)]
+    base_reinforce._replay.add([current_state, action, reward, next_state])
     return individual,
 
 
@@ -147,9 +153,6 @@ def eaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen,
     if verbose:
         print(logbook.stream)
 
-    # -----------------
-    toolbox.train_RL()
-    # -----------------
 
     # Begin the generational process
     for gen in tqdm(range(1, ngen + 1)):
@@ -175,9 +178,6 @@ def eaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen,
         if verbose:
             print(logbook.stream)
 
-        # -----------------
-        toolbox.train_RL()
-        # -----------------
 
     return population, logbook
 

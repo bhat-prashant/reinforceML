@@ -8,17 +8,16 @@ import random
 random.seed(10)
 import warnings
 import numpy as np
-import pandas as pd
 from copy import  deepcopy
 from deap import gp, creator, base, tools
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
 from gp_ import grow_individual, mutate, cxOnePoint, eaMuPlusLambda
-from utils_ import append_to_dataframe, reshape_numpy
+from utils_ import reshape_numpy
 from lookup import TransformerLookUp
 from transformer import TransformerClassGenerator, ScaledArray, SelectedArray, ExtractedArray, ClassifiedArray
-
+from ddqn import Replay_Memory
 
 class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
 
@@ -62,7 +61,8 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         self._X = None
         self._y = None
         self._pset = None
-        self._pandas_columns = None
+        self._columns = None
+        self._initialise_replay()
 
 
     def _setup_pset(self):
@@ -77,7 +77,7 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
             self._pset = gp.PrimitiveSetTyped('MAIN', self._inputArray, self._outputArray)
             self._pset.renameArguments(ARG0='input_matrix')
             lookup = TransformerLookUp(self._feature_count, self._random_state)
-            self._pandas_columns = []  # input features for RL training
+            self._columns = []  # input features for RL training
             for type_ in self._trans_types:
                 trans_lookup = lookup.get_lookup(type_)
                 # add transformers as primitives
@@ -103,7 +103,7 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
                             arg_name = arg.__name__ + "=" + str(val)
                             self._pset.addTerminal(val, arg, name=arg_name)
                             # input features for RL training
-                            self._pandas_columns.append(arg_name)
+                            self._columns.append(arg_name)
 
     def _setup_toolbox(self):
         """ sets up toolbox for evolution
@@ -124,8 +124,7 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         self._toolbox.register('evaluate', self._evaluate)
         self._toolbox.register('select', tools.selBest)
         self._toolbox.register('mate', cxOnePoint, self._random_state)
-        self._toolbox.register('mutate', mutate, self._pset, self._random_state)
-        self._toolbox.register('train_RL', self._train_RL)
+        self._toolbox.register('mutate', mutate, self)
 
     def _compile_to_sklearn(self, individual):
         """ Transform DEAP Individual to sklearn pipeline
@@ -180,38 +179,7 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         # Future Work: Export Hall of Fame individuals' sklearn-pipeline to a file
         self._solution_to_file()
 
-    def _create_dataframe(self):
-        """ From a list of index tuples, create pandas dataframe for the surrogate task
 
-        :return: None
-        """
-        # target column for RL training
-        self._pandas_columns.append('reward')
-        self._rl_dataframe = pd.DataFrame(columns=self._pandas_columns)
-
-    def _train_RL(self):
-        """ Train surrogate network for informed evolution
-
-        Future Work: Use GridSearchCV instead of a bare estimator
-
-        :return:None
-        """
-        self._rl_dataframe = self._rl_dataframe.drop_duplicates()
-        self._rl_dataframe = self._rl_dataframe.reset_index(drop=True)
-        X = self._rl_dataframe.iloc[:, :-1].values
-        y = self._rl_dataframe.iloc[:, -1].values
-        X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=self._random_state)
-        self._reinforce_learner.fit(X_tr, y_tr)
-        y_pr = self._reinforce_learner.predict(X_te)
-
-    def _predict_RL(self, dataframe):
-        """ predict fitness using surrogate network
-
-        :param dataframe: pandas dataframe object
-        :return: None
-        """
-        X = dataframe.iloc[:, :-1].values
-        ypred = self._reinforce_learner.predict(X)
 
     def fit(self, X, y):
         """ Fit method for AFE
@@ -230,7 +198,6 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
             train_test_split(self._X, self._y, test_size=0.2, random_state=self._random_state)
         self._feature_count = self._X.shape[1]
         self._setup_pset()
-        self._create_dataframe()
         self._setup_toolbox()
         self._pop = self._toolbox.population(self._pop_size)
         self._evolve()
@@ -252,10 +219,8 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
             pipeline.fit(input_matrix, target)
             y_pred = pipeline.predict(self._X_val)
             score = self._scorer(self._y_val, y_pred)
-            self._rl_dataframe = append_to_dataframe(self._rl_dataframe, self._pandas_columns, individual, score)
             return score, individual.height
         except Exception as e:
-            self._rl_dataframe = append_to_dataframe(self._rl_dataframe, self._pandas_columns, individual, score)
             return score, individual.height
 
     @abc.abstractmethod
@@ -275,3 +240,10 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         :return: None
         """
         pass
+
+    def _initialise_replay(self):
+        """ Initialise the replay memory for DQN
+
+        :return: None
+        """
+        self._replay = Replay_Memory(random_state=self._random_state)
