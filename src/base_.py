@@ -177,8 +177,6 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         pop, log = eaMuPlusLambda(self._pop, toolbox=self._toolbox, mu=self._pop_size, lambda_=self._pop_size,
                                   cxpb=self._crossover_rate, mutpb=self._mutation_rate, ngen=self._generation,
                                   stats=stats, halloffame=self._hof, verbose=True)
-        # Future Work: Export Hall of Fame individuals' sklearn-pipeline to a file
-        self._solution_to_file()
 
 
 
@@ -235,13 +233,6 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         """
         pass
 
-    def _solution_to_file(self, f_name='solution'):
-        """ Future Work: Export best pipeline and the corresponding code to the file
-
-        :param f_name: string, file name
-        :return: None
-        """
-        pass
 
     def _initialise_ddqn(self):
         """ Initialise the DDQN

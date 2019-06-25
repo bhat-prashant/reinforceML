@@ -66,7 +66,7 @@ class ReinforceFeatureEngineer(BaseReinforceML):
         self._initial_score = self._scorer(self._y_val, y_pred)
         print('Initial Best score : ', self._initial_score)
         print(self._hof[0])
-        return self._compile_to_sklearn(self._hof[0]), self._estimator
+        return self._compile_to_sklearn(self._hof[0])
 
 
 class ReinforceClassifier(BaseReinforceML):
