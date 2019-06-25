@@ -75,25 +75,45 @@ def grow_individual(pset, trans_types, random_state, max_=8):
     return individual
 
 
-# mutate an individual during evolution by randomly replacing parameters
-# Future Work : allow individual to grow, shrink during mutation
+
 def mutate(base_reinforce, ind):
+    """ mutate an individual during evolution by DQN
+
+    :param base_reinforce:
+    :param ind:
+    :return:
+    """
     current_state = get_individual_config(base_reinforce._columns, ind)
     individual = deepcopy(ind)
-    # always ind[height] represents input_matrix
-    pos = individual.height + 1         # terminal position
-    idx = individual.height -1          # primitive position
+    action = base_reinforce._ddqn2.act(current_state, use_rl=base_reinforce._use_rl)
+    individual = apply_mutation(individual, base_reinforce, action)
+    if base_reinforce._use_rl:
+        reward, _ = base_reinforce._evaluate(individual)
+        reward = reward - ind.fitness.values[0]
+        next_state = get_individual_config(base_reinforce._columns, individual)
+        base_reinforce._ddqn2.step(state=current_state, action=action, reward=reward, next_state=next_state)
+    return individual,
+
+
+def apply_mutation(individual, base_reinforce, action):
+    """ apply an action selected by DQN
+
+    :param individual:
+    :param base_reinforce:
+    :param action:
+    :return:
+    """
+    pos = individual.height + 1  # terminal position
+    idx = individual.height - 1  # primitive position
     while idx >= 0:
         for arg_type in individual[idx].args[1:]:
-            # pick a random parameter and replace
-            individual[pos] = base_reinforce._random_state.choice(base_reinforce._pset.terminals[arg_type])
+            for arg in base_reinforce._pset.terminals[arg_type]:
+                if arg.name == base_reinforce._columns[action]:
+                    individual[pos] = arg
+                    return individual
             pos += 1
         idx -= 1
-    next_state = get_individual_config(base_reinforce._columns, individual)
-    reward = 0
-    action = [1 if i > j else 0 for i, j in zip(next_state, current_state)]
-    base_reinforce._replay.add([current_state, action, reward, next_state])
-    return individual,
+    return individual
 
 
 # borrowed from tpot, credits: tpot

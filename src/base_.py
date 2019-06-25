@@ -3,26 +3,26 @@ __author__ = "Prashant Shivarm Bhat"
 __email__ = "PrashantShivaram@outlook.com"
 
 import abc
-import random
-
-random.seed(10)
 import warnings
+from copy import deepcopy
+
 import numpy as np
-from copy import  deepcopy
 from deap import gp, creator, base, tools
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
+
+from ddqn2 import Agent
 from gp_ import grow_individual, mutate, cxOnePoint, eaMuPlusLambda
-from utils_ import reshape_numpy
 from lookup import TransformerLookUp
 from transformer import TransformerClassGenerator, ScaledArray, SelectedArray, ExtractedArray, ClassifiedArray
-from ddqn import Replay_Memory
+from utils_ import reshape_numpy
+
 
 class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
 
     def __init__(self, estimator, reinforce_learner, feateng, generation, pop_size, mutation_rate,
-                 crossover_rate, scorer, inputArray, outputArray, trans_types, random_state):
+                 crossover_rate, scorer, inputArray, outputArray, trans_types, random_state, use_rl):
         """ Base class for tree based evolution
 
         :param estimator: an instance of sklearn estimator
@@ -62,7 +62,8 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         self._y = None
         self._pset = None
         self._columns = None
-        self._initialise_replay()
+        self._use_rl = use_rl
+
 
 
     def _setup_pset(self):
@@ -198,6 +199,7 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
             train_test_split(self._X, self._y, test_size=0.2, random_state=self._random_state)
         self._feature_count = self._X.shape[1]
         self._setup_pset()
+        self._initialise_ddqn()
         self._setup_toolbox()
         self._pop = self._toolbox.population(self._pop_size)
         self._evolve()
@@ -241,9 +243,9 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         """
         pass
 
-    def _initialise_replay(self):
-        """ Initialise the replay memory for DQN
+    def _initialise_ddqn(self):
+        """ Initialise the DDQN
 
         :return: None
         """
-        self._replay = Replay_Memory(random_state=self._random_state)
+        self._ddqn2 = Agent(state_size=len(self._columns), action_size=len(self._columns), seed=0)

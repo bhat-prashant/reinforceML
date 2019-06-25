@@ -12,6 +12,7 @@ from sklearn.preprocessing import StandardScaler, MaxAbsScaler, MinMaxScaler, No
     PolynomialFeatures, QuantileTransformer, RobustScaler
 from sklearn.svm import LinearSVC
 from sklearn.tree import DecisionTreeClassifier
+from xgboost import XGBClassifier
 
 from transformer import AddReinforce, SubtractReinforce, KBinsDiscretizerReinforce, EmptyTransformer, \
     PCAReinforce, MultiplyReinforce, DivideReinforce, LogReinforce
@@ -191,6 +192,16 @@ class TransformerLookUp:
             'GaussianNB': {
                 'transformer': GaussianNB,
                 'params': {}
+            },
+
+            'XGBClassifier': {
+                'transformer': XGBClassifier,
+                'params': {'n_estimators': [100],
+                           'max_depth': range(1, 11),
+                           'learning_rate': [1e-3, 1e-2, 1e-1, 0.5, 1.],
+                           'subsample': np.arange(0.05, 1.01, 0.05),
+                           'min_child_weight': range(1, 21),
+                           'nthread': [1]}
             },
             'BernoulliNB': {
                 'transformer': BernoulliNB,
