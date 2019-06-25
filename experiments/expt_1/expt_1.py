@@ -5,10 +5,12 @@ __email__ = "PrashantShivaram@outlook.com"
 import csv
 import os
 
+import pandas as pd
+
 from reinforce_ import ReinforceFeatureEngineer
 
 
-def estimate_performance(reinforce, individual, dataset_name='temp'):
+def estimate_performance(reinforce, individual, trans_types, dataset_name='temp'):
     """ Temporary: For ongoing research paper
 
     :param individual:
@@ -26,22 +28,20 @@ def estimate_performance(reinforce, individual, dataset_name='temp'):
         write_type = 'w'
     with open(filename, write_type) as csvFile:
         writer = csv.writer(csvFile)
-        writer.writerow([dataset_name, "DQN={}".format(str(reinforce._use_rl)), "{0:.3f}".format(initial_score),
+        writer.writerow(
+            [dataset_name, "DQN={}".format(str(reinforce._use_rl)), trans_types, "{0:.3f}".format(initial_score),
                          "{0:.3f}".format(final_score), "{0:.3f}".format(score)])
     csvFile.close()
 
 
-filename = 'temp'
-
-# data = pd.read_csv('../data/heart.csv', header=None)
-# X = data.iloc[:, :-1].values
-# y = data.iloc[:, -1].values
-
-from sklearn.datasets import load_breast_cancer
-
-X, y = load_breast_cancer(return_X_y=True)
-feat = ReinforceFeatureEngineer(pop_size=10, generation=10, use_rl=False)  # target_type='regression'
-feat.fit(X, y)
-pipeline = feat.predict()
-
-estimate_performance(feat, feat._hof[0], filename)
+if __name__ == "__main__":
+    dataset = 'heart'
+    data = pd.read_csv('../../data/{}.csv'.format(dataset))
+    X = data.iloc[:, :-1].values
+    y = data.iloc[:, -1].values
+    transformer_types = ['unary', 'scaler', 'extractor']
+    feat = ReinforceFeatureEngineer(pop_size=10, generation=10, use_rl=False,
+                                    trans_types=transformer_types)
+    feat.fit(X, y)
+    pipeline = feat.predict()
+    estimate_performance(feat, feat._hof[0], trans_types='_'.join(transformer_types), dataset_name=dataset)
