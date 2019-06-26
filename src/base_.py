@@ -12,7 +12,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
 
-from ddqn2 import Agent
+from ddqn import DDQN
 from gp_ import grow_individual, mutate, cxOnePoint, eaMuPlusLambda
 from lookup import TransformerLookUp
 from transformer import TransformerClassGenerator, ScaledArray, SelectedArray, ExtractedArray, ClassifiedArray
@@ -239,4 +239,4 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
 
         :return: None
         """
-        self._ddqn2 = Agent(state_size=len(self._columns), action_size=len(self._columns), seed=0)
+        self._ddqn2 = DDQN(state_size=len(self._columns), action_size=len(self._columns), seed=0)

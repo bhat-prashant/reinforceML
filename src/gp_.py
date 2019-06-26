@@ -85,13 +85,13 @@ def mutate(base_reinforce, ind):
     """
     current_state = get_individual_config(base_reinforce._columns, ind)
     individual = deepcopy(ind)
-    action = base_reinforce._ddqn2.act(current_state, use_rl=base_reinforce._use_rl)
+    action = base_reinforce._ddqn2.perform_action(current_state, use_rl=base_reinforce._use_rl)
     individual = apply_mutation(individual, base_reinforce, action)
     if base_reinforce._use_rl:
         reward, _ = base_reinforce._evaluate(individual)
         reward = reward - ind.fitness.values[0]
         next_state = get_individual_config(base_reinforce._columns, individual)
-        base_reinforce._ddqn2.step(state=current_state, action=action, reward=reward, next_state=next_state)
+        base_reinforce._ddqn2.timestep(state=current_state, action=action, reward=reward, next_state=next_state)
     return individual,
 
 

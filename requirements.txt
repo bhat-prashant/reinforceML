@@ -1,4 +1,4 @@
-scikit-learn
+scikit-train_ddqn
 deap
 numpy
 tpot

@@ -35,13 +35,14 @@ def estimate_performance(reinforce, individual, trans_types, dataset_name='temp'
 
 
 if __name__ == "__main__":
-    dataset = 'heart'
-    data = pd.read_csv('../../data/{}.csv'.format(dataset))
-    X = data.iloc[:, :-1].values
-    y = data.iloc[:, -1].values
-    transformer_types = ['unary', 'scaler', 'extractor']
-    feat = ReinforceFeatureEngineer(pop_size=10, generation=10, use_rl=False,
-                                    trans_types=transformer_types)
-    feat.fit(X, y)
-    pipeline = feat.predict()
-    estimate_performance(feat, feat._hof[0], trans_types='_'.join(transformer_types), dataset_name=dataset)
+    datasets = ['heart', ]  # 'wind', 'puma_8', 'puma_32'
+    for dataset in datasets:
+        data = pd.read_csv('../../data/{}.csv'.format(dataset))
+        X = data.iloc[:, :-1].values
+        y = data.iloc[:, -1].values
+        transformer_types = ['unary', 'scaler', 'extractor']
+        feat = ReinforceFeatureEngineer(pop_size=40, generation=10, use_rl=True,
+                                        trans_types=transformer_types)
+        feat.fit(X, y)
+        pipeline = feat.predict()
+        estimate_performance(feat, feat._hof[0], trans_types='_'.join(transformer_types), dataset_name=dataset)
