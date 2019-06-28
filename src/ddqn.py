@@ -16,7 +16,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class DDQN():
 
-    def __init__(self, state_size, action_size, seed):
+    def __init__(self, state_size, action_size, seed, technique='ddqn'):
         """ DDQN algorithm implementation
         https://arxiv.org/abs/1509.06461
 
@@ -27,7 +27,7 @@ class DDQN():
         :param seed: int,
             random seed
         """
-
+        self.technique = technique
         self.t_step = 0
         self._buffer_size = int(1e5)
         self._batch_size = 64
@@ -94,13 +94,14 @@ class DDQN():
         :return:
         """
         states, actions, rewards, next_states = experiences
-
-        # DDQN - compute q value from max_action of q-network
-        max_actions = self.qnetwork_target(next_states).detach().max(1)[1].unsqueeze(1)
-        Q_targets_next = self.qnetwork_target(next_states).gather(1, max_actions)
-
-        # DQN - compute q value from max_action of target network
-        # Q_targets_next = self.qnetwork_target(next_states).detach().max(1)[0].unsqueeze(1)
+        Q_targets_next = []
+        if self.technique == 'ddqn':
+            # DDQN - compute q value from max_action of q-network
+            max_actions = self.qnetwork_target(next_states).detach().max(1)[1].unsqueeze(1)
+            Q_targets_next = self.qnetwork_target(next_states).gather(1, max_actions)
+        elif self.technique == 'dqn':
+            # DQN - compute q value from max_action of target network
+            Q_targets_next = self.qnetwork_target(next_states).detach().max(1)[0].unsqueeze(1)
 
         Q_targets = rewards + (gamma * Q_targets_next)
         Q_expected = self.qnetwork_local(states).gather(1, actions)

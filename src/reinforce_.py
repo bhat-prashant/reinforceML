@@ -20,7 +20,7 @@ random_state = np.random.RandomState(10)
 class ReinforceFeatureEngineer(BaseReinforceML):
     def __init__(self, generation=20, pop_size=100, use_rl=True, mutation_rate=0.3, crossover_rate=0.7,
                  target_type='classification', scorer=accuracy_score, trans_types=None,
-                 estimator=SVC(random_state=random_state, gamma='auto')):
+                 estimator=SVC(random_state=random_state, gamma='auto'), rl_technique='ddqn'):
         """ Automated Feature Engineer (AFE)
 
         Generates best set of features given a target type (classification / regression)
@@ -54,7 +54,7 @@ class ReinforceFeatureEngineer(BaseReinforceML):
                                                        outputArray=ExtractedArray,
                                                        trans_types=trans_types,
                                                        random_state=random_state,
-                                                       use_rl=use_rl)
+                                                       use_rl=use_rl, rl_technique=rl_technique)
 
     def predict(self, X=None, y=None):
         """ Returns a pipeline that yields the best score for the given estimator and scorer

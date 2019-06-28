@@ -22,7 +22,7 @@ from utils_ import reshape_numpy
 class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
 
     def __init__(self, estimator, reinforce_learner, feateng, generation, pop_size, mutation_rate,
-                 crossover_rate, scorer, inputArray, outputArray, trans_types, random_state, use_rl):
+                 crossover_rate, scorer, inputArray, outputArray, trans_types, random_state, use_rl, rl_technique):
         """ Base class for tree based evolution
 
         :param estimator: an instance of sklearn estimator
@@ -63,6 +63,7 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         self._pset = None
         self._columns = None
         self._use_rl = use_rl
+        self._rl_technique = rl_technique
 
 
 
@@ -239,4 +240,5 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
 
         :return: None
         """
-        self._ddqn2 = DDQN(state_size=len(self._columns), action_size=len(self._columns), seed=0)
+        self._ddqn2 = DDQN(state_size=len(self._columns), action_size=len(self._columns), seed=0,
+                           technique=self._rl_technique)
