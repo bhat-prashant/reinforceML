@@ -4,11 +4,13 @@ __email__ = "PrashantShivaram@outlook.com"
 
 import csv
 import os
-
+import warnings
+warnings.filterwarnings("ignore")
 import pandas as pd
-
 from reinforce_ import ReinforceFeatureEngineer
-
+from sklearn.tree import  DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
 
 def estimate_performance(reinforce, individual, trans_types, rl_technique, dataset_name='temp'):
     """ Temporary: For ongoing research paper
@@ -37,6 +39,15 @@ def estimate_performance(reinforce, individual, trans_types, rl_technique, datas
         writer.writerows(rows)
     csvFile.close()
 
+def reinforce_rl(X_t, y_t, use_rl, technique):
+    transformer_types = ['unary', 'scaler', 'extractor']
+    feat = ReinforceFeatureEngineer(pop_size=100, generation=100, use_rl=use_rl, trans_types=transformer_types,
+                                    rl_technique=technique)
+    feat.fit(X_t, y_t)
+    pipeline = feat.predict()
+    estimate_performance(feat, feat._hof[0], trans_types='_'.join(transformer_types),
+                         rl_technique=feat._rl_technique, dataset_name=dataset)
+
 
 if __name__ == "__main__":
     datasets = ['heart', ]  # 'wind', 'puma_8', 'puma_32'
@@ -44,10 +55,10 @@ if __name__ == "__main__":
         data = pd.read_csv('../../data/{}.csv'.format(dataset))
         X = data.iloc[:, :-1].values
         y = data.iloc[:, -1].values
-        transformer_types = ['unary', 'scaler', 'extractor']
-        feat = ReinforceFeatureEngineer(pop_size=40, generation=10, use_rl=True, trans_types=transformer_types,
-                                        rl_technique='dqn')
-        feat.fit(X, y)
-        pipeline = feat.predict()
-        estimate_performance(feat, feat._hof[0], trans_types='_'.join(transformer_types),
-                             rl_technique=feat._rl_technique, dataset_name=dataset)
+        use_rl = True
+        for technique in ['dqn', 'ddqn']:
+            reinforce_rl(X, y, use_rl=use_rl, technique=technique)
+        use_rl = False
+        reinforce_rl(X, y, use_rl=use_rl, technique=technique)
+
+
