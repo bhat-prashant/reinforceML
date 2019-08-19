@@ -8,7 +8,6 @@ from sklearn.exceptions import DataConversionWarning
 
 warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 from base_ import BaseReinforceML
-from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import accuracy_score, r2_score
 from sklearn.svm import SVC, SVR
 from transformer import ExtractedArray, SelectedArray
@@ -37,15 +36,14 @@ class ReinforceFeatureEngineer(BaseReinforceML):
                           can be left to default in case you mention target_type
         :return: None
         """
-        reinforce_learner = RandomForestRegressor(n_jobs=-1, n_estimators=500, random_state=random_state,
-                                                  warm_start=False)
+
         if target_type == 'regression':
             estimator = SVR(gamma='auto')
             scorer = r2_score
         if trans_types is None:
             trans_types = ['unary', 'scaler', 'selector', 'extractor']
 
-        super(ReinforceFeatureEngineer, self).__init__(estimator=estimator, reinforce_learner=reinforce_learner,
+        super(ReinforceFeatureEngineer, self).__init__(estimator=estimator,
                                                        feateng=True,
                                                        generation=generation, pop_size=pop_size,
                                                        mutation_rate=mutation_rate,
@@ -72,8 +70,9 @@ class ReinforceFeatureEngineer(BaseReinforceML):
 
 
 class ReinforceClassifier(BaseReinforceML):
-    def __init__(self, generation=20, pop_size=100, mutation_rate=0.3, crossover_rate=0.7,
-                 scorer=accuracy_score, estimator=SVC(random_state=random_state, gamma='auto')):
+    def __init__(self, generation=20, pop_size=100, mutation_rate=0.3, use_rl=True, crossover_rate=0.7,
+                 trans_types=None,
+                 scorer=accuracy_score, estimator=SVC(random_state=random_state, gamma='auto'), rl_technique='ddqn'):
         """ Automated Classification
 
         Given a labeled inputs, searches for an optimal pipeline which maximises the scorer(accuracy_score by default)
@@ -85,15 +84,17 @@ class ReinforceClassifier(BaseReinforceML):
         :param scorer: one of sklearn metrics, usually one of accuracy_score
         :return: None
         """
-        reinforce_learner = RandomForestRegressor(n_jobs=-1, n_estimators=500, random_state=random_state,
-                                                  warm_start=False)
-        super(ReinforceClassifier, self).__init__(estimator=estimator, reinforce_learner=reinforce_learner,
+
+        if trans_types is None:
+            trans_types = ['unary', 'scaler', 'selector', 'extractor', 'classifier']
+
+        super(ReinforceClassifier, self).__init__(estimator=estimator,
                                                   feateng=False,
                                                   generation=generation, pop_size=pop_size, mutation_rate=mutation_rate,
                                                   crossover_rate=crossover_rate,
                                                   scorer=scorer, inputArray=[np.ndarray], outputArray=SelectedArray,
-                                                  trans_types=['scaler', 'classifier'],
-                                                  random_state=random_state)  # , 'extractor','unary', ,'selector'
+                                                  trans_types=trans_types,
+                                                  random_state=random_state, use_rl=use_rl, rl_technique=rl_technique)
 
     def predict(self, X=None, y=None):
         """ Returns a pipeline that yields the best score for the given estimator and scorer

@@ -8,7 +8,7 @@ import os
 
 import pandas as pd
 
-from reinforce_ import ReinforceFeatureEngineer
+from reinforce_ import ReinforceClassifier
 
 now = datetime.datetime.now()
 
@@ -44,12 +44,12 @@ def estimate_performance(reinforce, individual, trans_types, rl_technique, datas
 if __name__ == "__main__":
     datasets = ['heart', ]  # 'wind', 'puma_8', 'puma_32'
     for dataset in datasets:
-        for technique in ['ddqn']:  # , 'dqn',
+        for technique in ['dqn']:  # , 'dqn',
             data = pd.read_csv('../../data/{}.csv'.format(dataset))
             X = data.iloc[:, :-1].values
             y = data.iloc[:, -1].values
-            transformer_types = ['unary', 'scaler', 'extractor']  # 'selector'
-            feat = ReinforceFeatureEngineer(pop_size=10, generation=5, use_rl=False, trans_types=transformer_types,
+            transformer_types = ['unary', 'scaler', 'extractor', 'classifier']  # 'selector'
+            feat = ReinforceClassifier(pop_size=10, generation=5, use_rl=False, trans_types=transformer_types,
                                             rl_technique=technique)
             feat.fit(X, y)
             pipeline = feat.predict()

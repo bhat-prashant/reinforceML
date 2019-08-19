@@ -15,13 +15,14 @@ from sklearn.pipeline import make_pipeline
 from ddqn import DDQN
 from gp_ import grow_individual, mutate, cxOnePoint, eaMuPlusLambda
 from lookup import TransformerLookUp
-from transformer import TransformerClassGenerator, ScaledArray, SelectedArray, ExtractedArray, ClassifiedArray
+from transformer import TransformerClassGenerator, ScaledArray, SelectedArray, \
+    ExtractedArray, ClassifiedArray, UnaryModifiedArray
 from utils_ import reshape_numpy
 
 
 class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
 
-    def __init__(self, estimator, reinforce_learner, feateng, generation, pop_size, mutation_rate,
+    def __init__(self, estimator, feateng, generation, pop_size, mutation_rate,
                  crossover_rate, scorer, inputArray, outputArray, trans_types, random_state, use_rl, rl_technique):
         """ Base class for tree based evolution
 
@@ -48,7 +49,6 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         self._mutation_rate = mutation_rate
         self._crossover_rate = crossover_rate
         self._estimator = estimator
-        self._reinforce_learner = reinforce_learner
         self._scorer = scorer
         self._inputArray = inputArray
         self._outputArray = outputArray
@@ -87,7 +87,7 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
                     # add transformers to pset
                     transformer = TransformerClassGenerator(key, trans_lookup[key])
                     if type_ == 'unary':
-                        self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, np.ndarray)
+                        self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, UnaryModifiedArray)
                     elif type_ == 'scaler':
                         self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, ScaledArray)
                     elif type_ == 'selector':

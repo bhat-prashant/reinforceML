@@ -5,11 +5,10 @@ __email__ = "PrashantShivaram@outlook.com"
 from collections import defaultdict
 from copy import deepcopy
 
-import numpy as np
 from deap import tools, algorithms
 from tqdm import tqdm
 
-from transformer import ScaledArray, SelectedArray, ExtractedArray, ClassifiedArray
+from transformer import ScaledArray, SelectedArray, ExtractedArray, ClassifiedArray, UnaryModifiedArray
 from utils_ import get_individual_config
 
 
@@ -22,7 +21,7 @@ def grow_individual(pset, trans_types, random_state, max_=8):
     # Add unary operators
     if 'unary' in trans_types:
         # first 'unary' with input_matrix
-        transformer = random_state.choice(pset.primitives[np.ndarray])
+        transformer = random_state.choice(pset.primitives[UnaryModifiedArray])
         individual.append(transformer)
         for arg_type in transformer.args[idx:]:
             terminal = random_state.choice(pset.terminals[arg_type])
@@ -33,7 +32,7 @@ def grow_individual(pset, trans_types, random_state, max_=8):
         # subsequent unary operators without input_matrix
         while height >= len(trans_types):
             prim = []
-            transformer = random_state.choice(pset.primitives[np.ndarray])
+            transformer = random_state.choice(pset.primitives[UnaryModifiedArray])
             individual = [transformer] + individual
             # input_matrix is skipped since it was included before
             for arg_type in transformer.args[1:]:
