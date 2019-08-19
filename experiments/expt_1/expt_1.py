@@ -3,12 +3,14 @@ __author__ = "Prashant Shivarm Bhat"
 __email__ = "PrashantShivaram@outlook.com"
 
 import csv
+import datetime
 import os
 
 import pandas as pd
 
 from reinforce_ import ReinforceFeatureEngineer
 
+now = datetime.datetime.now()
 
 def estimate_performance(reinforce, individual, trans_types, rl_technique, dataset_name='temp'):
     """ Temporary: For ongoing research paper
@@ -27,11 +29,12 @@ def estimate_performance(reinforce, individual, trans_types, rl_technique, datas
         write_type = 'a'
     else:
         write_type = 'w'
-        rows.append(['dataset', 'Use_RL', 'RL_technique', 'transformer_types', 'initial_score', 'final_score',
+        rows.append(['time', 'dataset', 'Use_RL', 'RL_technique', 'transformer_types', 'initial_score', 'final_score',
                      'improvement (%)'])
     with open(filename, write_type) as csvFile:
         writer = csv.writer(csvFile)
-        rows.append([dataset_name, "RL={}".format(str(reinforce._use_rl)), rl_technique, trans_types,
+        rows.append([now.strftime("%Y-%m-%d %H:%M"), dataset_name, "RL={}".format(str(reinforce._use_rl)), rl_technique,
+                     trans_types,
                      "{0:.3f}".format(initial_score),
                          "{0:.3f}".format(final_score), "{0:.3f}".format(score)])
         writer.writerows(rows)
@@ -41,13 +44,14 @@ def estimate_performance(reinforce, individual, trans_types, rl_technique, datas
 if __name__ == "__main__":
     datasets = ['heart', ]  # 'wind', 'puma_8', 'puma_32'
     for dataset in datasets:
-        data = pd.read_csv('../../data/{}.csv'.format(dataset))
-        X = data.iloc[:, :-1].values
-        y = data.iloc[:, -1].values
-        transformer_types = ['unary', 'scaler', 'extractor']
-        feat = ReinforceFeatureEngineer(pop_size=40, generation=10, use_rl=True, trans_types=transformer_types,
-                                        rl_technique='dqn')
-        feat.fit(X, y)
-        pipeline = feat.predict()
-        estimate_performance(feat, feat._hof[0], trans_types='_'.join(transformer_types),
-                             rl_technique=feat._rl_technique, dataset_name=dataset)
+        for technique in ['ddqn']:  # , 'dqn',
+            data = pd.read_csv('../../data/{}.csv'.format(dataset))
+            X = data.iloc[:, :-1].values
+            y = data.iloc[:, -1].values
+            transformer_types = ['unary', 'scaler', 'extractor']  # 'selector'
+            feat = ReinforceFeatureEngineer(pop_size=10, generation=5, use_rl=False, trans_types=transformer_types,
+                                            rl_technique=technique)
+            feat.fit(X, y)
+            pipeline = feat.predict()
+            estimate_performance(feat, feat._hof[0], trans_types='_'.join(transformer_types),
+                                 rl_technique=feat._rl_technique, dataset_name=dataset)

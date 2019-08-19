@@ -180,7 +180,6 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
                                   stats=stats, halloffame=self._hof, verbose=True)
 
 
-
     def fit(self, X, y):
         """ Fit method for AFE
 
