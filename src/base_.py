@@ -16,7 +16,7 @@ from ddqn import DDQN
 from gp_ import grow_individual, mutate, cxOnePoint, eaMuPlusLambda
 from lookup import TransformerLookUp
 from transformer import TransformerClassGenerator, ScaledArray, SelectedArray, \
-    ExtractedArray, ClassifiedArray, UnaryModifiedArray
+    ExtractedArray, ClassifiedArray, UnaryModifiedArray, RegressedArray
 from utils_ import reshape_numpy
 
 
@@ -96,6 +96,8 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
                         self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, ExtractedArray)
                     elif type_ == 'classifier':
                         self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, ClassifiedArray)
+                    elif type_ == 'regressor':
+                        self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, RegressedArray)
 
                     # add transformer arguments as terminal
                     # arg_types is a list

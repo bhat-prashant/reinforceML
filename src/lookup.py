@@ -10,8 +10,8 @@ from sklearn.naive_bayes import GaussianNB, BernoulliNB, MultinomialNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler, MaxAbsScaler, MinMaxScaler, Normalizer, \
     PolynomialFeatures, QuantileTransformer, RobustScaler
-from sklearn.svm import LinearSVC
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.svm import LinearSVC, LinearSVR, SVR
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 from transformer import AddReinforce, SubtractReinforce, KBinsDiscretizerReinforce, EmptyTransformer, \
     PCAReinforce, MultiplyReinforce, DivideReinforce, LogReinforce
@@ -37,6 +37,8 @@ class TransformerLookUp:
             return self._universal_extractors
         elif trans_type == 'classifier':
             return self._classifiers
+        elif trans_type == 'regressor':
+            return self._regressors
 
     def _create_transformers(self):
         self._unary_transformers = {
@@ -192,7 +194,6 @@ class TransformerLookUp:
                 'transformer': GaussianNB,
                 'params': {}
             },
-
             # 'XGBClassifier': {
             #     'transformer': XGBClassifier,
             #     'params': {'n_estimators': [100],
@@ -276,5 +277,33 @@ class TransformerLookUp:
                            'max_iter': [100000],
                            'multi_class': ['auto'],
                            'random_state': [self._random_state]}
+            }
+        }
+
+        self._regressors = {
+            'DecisionTreeRegressor': {
+                'transformer': DecisionTreeRegressor,
+                'params': {'criterion': ["gini", "entropy"],
+                           'max_depth': range(1, 11),
+                           'min_samples_split': range(2, 21),
+                           'min_samples_leaf': range(1, 21),
+                           'random_state': [self._random_state]}
+            },
+            'SVR': {
+                'transformer': SVR,
+                'params': {'gamma': ['auto'],
+                           'kernel': ["rbf", "linear", "poly", "sigmoid"],
+                           'tol': [1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
+                           'C': [1e-4, 1e-3, 1e-2, 1e-1, 0.5, 1., 5., 10., 15., 20., 25.],
+                           'max_iter': [100000]
+                           }
+            },
+            'LinearSVR': {
+                'transformer': LinearSVR,
+                'params': {'tol': [1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
+                           'C': [1e-4, 1e-3, 1e-2, 1e-1, 0.5, 1., 5., 10., 15., 20., 25.],
+                           'max_iter': [100000],
+                           'random_state': [self._random_state]
+                           }
             }
         }

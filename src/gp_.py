@@ -8,7 +8,8 @@ from copy import deepcopy
 from deap import tools, algorithms
 from tqdm import tqdm
 
-from transformer import ScaledArray, SelectedArray, ExtractedArray, ClassifiedArray, UnaryModifiedArray
+from transformer import ScaledArray, SelectedArray, ExtractedArray, ClassifiedArray, \
+    UnaryModifiedArray, RegressedArray
 from utils_ import get_individual_config
 
 
@@ -70,6 +71,12 @@ def grow_individual(pset, trans_types, random_state, max_=8):
             terminal = random_state.choice(pset.terminals[arg_type])
             individual.append(terminal)
         idx = 1
+    if 'regressor' in trans_types:
+        regressor = random_state.choice(pset.primitives[RegressedArray])
+        individual = [regressor] + individual
+        for arg_type in regressor.args[idx:]:
+            terminal = random_state.choice(pset.terminals[arg_type])
+            individual.append(terminal)
     # individual as a list (iterable)
     return individual
 

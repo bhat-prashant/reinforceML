@@ -6,13 +6,10 @@ import csv
 import datetime
 import os
 
-import pandas as pd
-
-from reinforce_ import ReinforceClassifier
-
 now = datetime.datetime.now()
 
-def estimate_performance(reinforce, individual, trans_types, rl_technique, dataset_name='temp'):
+
+def estimate_performance(reinforce, individual, trans_types, rl_technique, dataset_name='temp', expt_type=''):
     """ Temporary: For ongoing research paper
 
     :param individual:
@@ -23,7 +20,7 @@ def estimate_performance(reinforce, individual, trans_types, rl_technique, datas
     initial_score = reinforce._scorer(reinforce._y_val, y_pred)
     final_score, _ = reinforce._evaluate(individual)
     score = ((1 - initial_score) - (1 - final_score)) / (1 - initial_score)
-    filename = '../../results/expt_1/result_{}.csv'.format(reinforce._estimator.__class__.__name__)
+    filename = '../../results/expt_1/result_{}_{}.csv'.format(expt_type, reinforce._estimator.__class__.__name__)
     rows = []
     if os.path.exists(filename):
         write_type = 'a'
@@ -36,22 +33,6 @@ def estimate_performance(reinforce, individual, trans_types, rl_technique, datas
         rows.append([now.strftime("%Y-%m-%d %H:%M"), dataset_name, "RL={}".format(str(reinforce._use_rl)), rl_technique,
                      trans_types,
                      "{0:.3f}".format(initial_score),
-                         "{0:.3f}".format(final_score), "{0:.3f}".format(score)])
+                     "{0:.3f}".format(final_score), "{0:.3f}".format(score)])
         writer.writerows(rows)
     csvFile.close()
-
-
-if __name__ == "__main__":
-    datasets = ['heart', ]  # 'wind', 'puma_8', 'puma_32'
-    for dataset in datasets:
-        for technique in ['dqn']:  # , 'dqn',
-            data = pd.read_csv('../../data/{}.csv'.format(dataset))
-            X = data.iloc[:, :-1].values
-            y = data.iloc[:, -1].values
-            transformer_types = ['unary', 'scaler', 'extractor', 'classifier']  # 'selector'
-            feat = ReinforceClassifier(pop_size=10, generation=5, use_rl=False, trans_types=transformer_types,
-                                            rl_technique=technique)
-            feat.fit(X, y)
-            pipeline = feat.predict()
-            estimate_performance(feat, feat._hof[0], trans_types='_'.join(transformer_types),
-                                 rl_technique=feat._rl_technique, dataset_name=dataset)

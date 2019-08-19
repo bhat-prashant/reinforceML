@@ -32,6 +32,11 @@ class ExtractedArray(np.ndarray):
 class ClassifiedArray(np.ndarray):
     pass
 
+
+# output class for classifiers
+class RegressedArray(np.ndarray):
+    pass
+
 class ARGType(object):
     """Base class for parameter specifications."""
     pass
