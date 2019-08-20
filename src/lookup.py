@@ -3,11 +3,12 @@ __author__ = "Prashant Shivarm Bhat"
 __email__ = "PrashantShivaram@outlook.com"
 
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, ExtraTreesClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, \
+    ExtraTreesClassifier, RandomForestRegressor, ExtraTreesRegressor, GradientBoostingRegressor, AdaBoostClassifier
 from sklearn.feature_selection import SelectKBest, SelectFromModel, VarianceThreshold, RFE, RFECV, chi2, f_classif
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB, BernoulliNB, MultinomialNB
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.preprocessing import StandardScaler, MaxAbsScaler, MinMaxScaler, Normalizer, \
     PolynomialFeatures, QuantileTransformer, RobustScaler
 from sklearn.svm import LinearSVC, LinearSVR, SVR
@@ -304,6 +305,50 @@ class TransformerLookUp:
                            'C': [1e-4, 1e-3, 1e-2, 1e-1, 0.5, 1., 5., 10., 15., 20., 25.],
                            'max_iter': [100000],
                            'random_state': [self._random_state]
+                           }
+            },
+            'KNeighborsRegressor': {
+                'transformer': KNeighborsRegressor,
+                'params': {'n_neighbors': range(1, 101),
+                           'weights': ["uniform", "distance"],
+                           'p': [1, 2]
+                           }
+            },
+            'RandomForestRegressor': {
+                'transformer': RandomForestRegressor,
+                'params': {'n_estimators': [100, 200, 300],
+                           'max_features': np.arange(0.05, 1.01, 0.05),
+                           'min_samples_split': range(2, 21),
+                           'min_samples_leaf': range(1, 21),
+                           'bootstrap': [True, False],
+                           'random_state': [self._random_state]
+                           }
+            },
+            'ExtraTreesRegressor': {
+                'transformer': ExtraTreesRegressor,
+                'params': {'n_estimators': [100, 200, 300],
+                           'max_features': np.arange(0.05, 1.01, 0.05),
+                           'min_samples_split': range(2, 21),
+                           'min_samples_leaf': range(1, 21),
+                           'bootstrap': [True, False],
+                           'random_state': [self._random_state]
+                           }
+            },
+            'GradientBoostingRegressor': {
+                'transformer': GradientBoostingRegressor,
+                'params': {'n_estimators': [100, 200, 300],
+                           'max_features': np.arange(0.05, 1.01, 0.05),
+                           'min_samples_split': range(2, 21),
+                           'min_samples_leaf': range(1, 21),
+                           'random_state': [self._random_state]
+                           }
+            },
+            'AdaBoostRegressor': {
+                'transformer': AdaBoostClassifier,
+                'params': {'n_estimators': [100],
+                           'learning_rate': [1e-3, 1e-2, 1e-1, 0.5, 1.],
+                           'random_state': [self._random_state],
+                           # 'loss': ["linear", "square", "exponential"]
                            }
             }
         }
