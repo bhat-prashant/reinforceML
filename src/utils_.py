@@ -39,3 +39,8 @@ def save_model(pipelines):
             pickle.dump(pipelines, open('../saved_models/{}__{}'.format(now.strftime("%Y-%m-%d_%H:%M"), num), 'wb'))
     else:
         pickle.dump(pipelines, open('../saved_models/{}'.format(now.strftime("%Y-%m-%d_%H:%M")), 'wb'))
+
+
+def load_model(filepath):
+    loaded_model = pickle.load(open(filepath, 'rb'))
+    return loaded_model
