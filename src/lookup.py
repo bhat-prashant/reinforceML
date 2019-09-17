@@ -6,6 +6,8 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, \
     ExtraTreesClassifier, RandomForestRegressor, ExtraTreesRegressor, GradientBoostingRegressor, AdaBoostClassifier
 from sklearn.feature_selection import SelectKBest, SelectFromModel, VarianceThreshold, RFE, RFECV, chi2, f_classif
+from sklearn.gaussian_process import GaussianProcessClassifier, GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import RBF, RationalQuadratic, DotProduct, WhiteKernel, ConstantKernel
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB, BernoulliNB, MultinomialNB
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
@@ -43,6 +45,7 @@ class TransformerLookUp:
             return self._regressors
 
     def _create_transformers(self):
+
         self._unary_transformers = {
             'KBinsDiscretizer': {
                 'transformer': KBinsDiscretizerReinforce,
@@ -196,6 +199,14 @@ class TransformerLookUp:
                 'transformer': GaussianNB,
                 'params': {}
             },
+            'GaussianProcessClassifier': {
+                'transformer': GaussianProcessClassifier,
+                'params': {'kernel': [RBF(), ConstantKernel(), WhiteKernel(), DotProduct(), RationalQuadratic()],
+                           'max_iter_predict': [100, 200, 500],
+                           'warm_start': [True, False],
+                           'random_state': [self._random_state],
+                           'n_jobs': [-1]}
+            },
             'XGBClassifier': {
                 'transformer': XGBClassifier,
                 'params': {'n_estimators': [100],
@@ -289,6 +300,12 @@ class TransformerLookUp:
                            'max_depth': range(1, 11),
                            'min_samples_split': range(2, 21),
                            'min_samples_leaf': range(1, 21),
+                           'random_state': [self._random_state]}
+            },
+            'GaussianProcessRegressor': {
+                'transformer': GaussianProcessRegressor,
+                'params': {'kernel': [RBF(), ConstantKernel(), WhiteKernel(), DotProduct(), RationalQuadratic()],
+                           'alpha': [1e-10, 1e-3, 1e-2, 1e-1, 1., 10., 100.],
                            'random_state': [self._random_state]}
             },
             'SVR': {
