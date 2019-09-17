@@ -20,6 +20,7 @@
           <option value="deap.creator.Individual" />
           <option value="deap.base.Toolbox.expr" />
           <option value="deap.base.Toolbox.individual" />
+          <option value="type.to_dict" />
         </list>
       </option>
     </inspection_tool>

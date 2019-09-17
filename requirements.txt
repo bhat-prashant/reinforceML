@@ -1,4 +1,0 @@
-deap
-numpy
-tpot
-tqdm
