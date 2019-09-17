@@ -66,7 +66,7 @@ class ReinforceFeatureEngineer(BaseReinforceML):
         self._initial_score = self._scorer(self._y_val, y_pred)
         print('Initial Best score : ', self._initial_score)
         print(self._hof[0])
-        return self._compile_to_sklearn(self._hof[0])
+        return self._compile_to_sklearn(self._hof[0]), self.logbook
 
 
 class ReinforceClassifier(BaseReinforceML):
@@ -104,7 +104,7 @@ class ReinforceClassifier(BaseReinforceML):
         :return: a tuple of sklearn pipeline and a instance of estimator
         """
         print(self._hof[0])
-        return self._compile_to_sklearn(self._hof[0])
+        return self._compile_to_sklearn(self._hof[0]), self.logbook
 
 
 class ReinforceRegressor(BaseReinforceML):
@@ -141,4 +141,4 @@ class ReinforceRegressor(BaseReinforceML):
         :return: a tuple of sklearn pipeline and a instance of estimator
         """
         print(self._hof[0])
-        return self._compile_to_sklearn(self._hof[0])
+        return self._compile_to_sklearn(self._hof[0]), self.logbook

@@ -20,7 +20,7 @@ def estimate_performance(reinforce, individual, trans_types, rl_technique, datas
     initial_score = reinforce._scorer(reinforce._y_val, y_pred)
     final_score, _ = reinforce._evaluate(individual)
     score = ((1 - initial_score) - (1 - final_score)) / (1 - initial_score)
-    filename = '../../results/expt_1/result_{}_{}.csv'.format(expt_type, reinforce._estimator.__class__.__name__)
+    filename = '../results/result_{}_{}.csv'.format(expt_type, reinforce._estimator.__class__.__name__)
     rows = []
     if os.path.exists(filename):
         write_type = 'a'
@@ -30,9 +30,10 @@ def estimate_performance(reinforce, individual, trans_types, rl_technique, datas
                      'improvement (%)'])
     with open(filename, write_type) as csvFile:
         writer = csv.writer(csvFile)
-        rows.append([now.strftime("%Y-%m-%d %H:%M"), dataset_name, "RL={}".format(str(reinforce._use_rl)), rl_technique,
+        rows.append([now.strftime("%Y-%m-%d_%H:%M"), dataset_name, "RL={}".format(str(reinforce._use_rl)), rl_technique,
                      trans_types,
                      "{0:.3f}".format(initial_score),
                      "{0:.3f}".format(final_score), "{0:.3f}".format(score)])
         writer.writerows(rows)
     csvFile.close()
+

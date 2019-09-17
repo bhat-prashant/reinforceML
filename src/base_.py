@@ -64,6 +64,7 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         self._columns = None
         self._use_rl = use_rl
         self._rl_technique = rl_technique
+        self.logbook = None
 
 
 
@@ -177,10 +178,9 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         stats.register("min", np.min)
         stats.register("max", np.max)
         # Future Work: add few new individuals every generation
-        pop, log = eaMuPlusLambda(self._pop, toolbox=self._toolbox, mu=self._pop_size, lambda_=self._pop_size,
-                                  cxpb=self._crossover_rate, mutpb=self._mutation_rate, ngen=self._generation,
-                                  stats=stats, halloffame=self._hof, verbose=True)
-
+        pop, self.logbook = eaMuPlusLambda(self._pop, toolbox=self._toolbox, mu=self._pop_size, lambda_=self._pop_size,
+                                           cxpb=self._crossover_rate, mutpb=self._mutation_rate, ngen=self._generation,
+                                           stats=stats, halloffame=self._hof, verbose=True)
 
     def fit(self, X, y):
         """ Fit method for AFE
