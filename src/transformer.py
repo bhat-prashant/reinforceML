@@ -12,6 +12,10 @@ from sklearn.preprocessing import KBinsDiscretizer
 from utils_ import reshape_numpy
 
 
+# output class for unary transformers
+class UnaryModifiedArray(np.ndarray):
+    pass
+
 # output class for scalers
 class ScaledArray(np.ndarray):
     pass
@@ -26,6 +30,11 @@ class ExtractedArray(np.ndarray):
 
 # output class for classifiers
 class ClassifiedArray(np.ndarray):
+    pass
+
+
+# output class for classifiers
+class RegressedArray(np.ndarray):
     pass
 
 class ARGType(object):

@@ -5,11 +5,12 @@ __email__ = "PrashantShivaram@outlook.com"
 from collections import defaultdict
 from copy import deepcopy
 
-import numpy as np
 from deap import tools, algorithms
 from tqdm import tqdm
 
-from transformer import ScaledArray, SelectedArray, ExtractedArray, ClassifiedArray
+from transformer import ScaledArray, SelectedArray, ExtractedArray, ClassifiedArray, \
+    UnaryModifiedArray, RegressedArray
+from utils_ import get_individual_config
 
 
 # Future Work : Write decorator for checking whether generated individual is valid
@@ -21,7 +22,7 @@ def grow_individual(pset, trans_types, random_state, max_=8):
     # Add unary operators
     if 'unary' in trans_types:
         # first 'unary' with input_matrix
-        transformer = random_state.choice(pset.primitives[np.ndarray])
+        transformer = random_state.choice(pset.primitives[UnaryModifiedArray])
         individual.append(transformer)
         for arg_type in transformer.args[idx:]:
             terminal = random_state.choice(pset.terminals[arg_type])
@@ -32,7 +33,7 @@ def grow_individual(pset, trans_types, random_state, max_=8):
         # subsequent unary operators without input_matrix
         while height >= len(trans_types):
             prim = []
-            transformer = random_state.choice(pset.primitives[np.ndarray])
+            transformer = random_state.choice(pset.primitives[UnaryModifiedArray])
             individual = [transformer] + individual
             # input_matrix is skipped since it was included before
             for arg_type in transformer.args[1:]:
@@ -70,24 +71,55 @@ def grow_individual(pset, trans_types, random_state, max_=8):
             terminal = random_state.choice(pset.terminals[arg_type])
             individual.append(terminal)
         idx = 1
+    if 'regressor' in trans_types:
+        regressor = random_state.choice(pset.primitives[RegressedArray])
+        individual = [regressor] + individual
+        for arg_type in regressor.args[idx:]:
+            terminal = random_state.choice(pset.terminals[arg_type])
+            individual.append(terminal)
     # individual as a list (iterable)
     return individual
 
 
-# mutate an individual during evolution by randomly replacing parameters
-# Future Work : allow individual to grow, shrink during mutation
-def mutate(pset, random_state, ind):
+
+def mutate(base_reinforce, ind):
+    """ mutate an individual during evolution by DQN
+
+    :param base_reinforce:
+    :param ind:
+    :return:
+    """
+    current_state = get_individual_config(base_reinforce._columns, ind)
     individual = deepcopy(ind)
-    # always ind[height] represents input_matrix
-    pos = individual.height + 1         # terminal position
-    idx = individual.height -1          # primitive position
+    action = base_reinforce._ddqn2.perform_action(current_state, use_rl=base_reinforce._use_rl)
+    individual = apply_mutation(individual, base_reinforce, action)
+    if base_reinforce._use_rl:
+        reward, _ = base_reinforce._evaluate(individual)
+        reward = reward - ind.fitness.values[0]
+        next_state = get_individual_config(base_reinforce._columns, individual)
+        base_reinforce._ddqn2.timestep(state=current_state, action=action, reward=reward, next_state=next_state)
+    return individual,
+
+
+def apply_mutation(individual, base_reinforce, action):
+    """ apply an action selected by DQN
+
+    :param individual:
+    :param base_reinforce:
+    :param action:
+    :return:
+    """
+    pos = individual.height + 1  # terminal position
+    idx = individual.height - 1  # primitive position
     while idx >= 0:
         for arg_type in individual[idx].args[1:]:
-            # pick a random parameter and replace
-            individual[pos] = random_state.choice(pset.terminals[arg_type])
+            for arg in base_reinforce._pset.terminals[arg_type]:
+                if arg.name == base_reinforce._columns[action]:
+                    individual[pos] = arg
+                    return individual
             pos += 1
         idx -= 1
-    return individual,
+    return individual
 
 
 # borrowed from tpot, credits: tpot
@@ -147,9 +179,6 @@ def eaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen,
     if verbose:
         print(logbook.stream)
 
-    # -----------------
-    toolbox.train_RL()
-    # -----------------
 
     # Begin the generational process
     for gen in tqdm(range(1, ngen + 1)):
@@ -175,9 +204,6 @@ def eaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen,
         if verbose:
             print(logbook.stream)
 
-        # -----------------
-        toolbox.train_RL()
-        # -----------------
 
     return population, logbook
 

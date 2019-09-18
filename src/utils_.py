@@ -2,8 +2,13 @@
 __author__ = "Prashant Shivarm Bhat"
 __email__ = "PrashantShivaram@outlook.com"
 
+import datetime
+import pickle
+
 import numpy as np
 import pandas as pd
+
+now = datetime.datetime.now()
 
 
 def reshape_data(individual):
@@ -15,17 +20,27 @@ def reshape_numpy(ndarray):
         ndarray = np.reshape(ndarray, (ndarray.shape[0], 1))
     return ndarray
 
-
-# Append individual's transformers to pandas dataframe, later user for RL training
-def append_to_dataframe(dataframe, columns, individual, score):
-    row = dict((el,[0]) for el in columns)
-    idx = individual.height
-    for primitive in individual[:idx]:
-        row[primitive.name] = [1]
-    row[columns[-1]] = [score] # update reward
-    df_row = pd.DataFrame.from_dict(row, orient='columns')
-    return pd.concat([dataframe, df_row], sort=False)
+def get_individual_config(columns, individual):
+    state = dict((el, 0) for el in columns)
+    idx = individual.height + 1
+    for terminal in individual[idx:]:
+        state[terminal.name] = 1
+    return np.array(list(state.values()))
 
 
+def save_logbook(logbook):
+    df_log = pd.DataFrame(logbook)
+    df_log.to_csv('../logs/{}.csv'.format(now.strftime("%Y-%m-%d_%H:%M")), index=False)
 
 
+def save_model(pipelines):
+    if isinstance(pipelines, list):
+        for num, model in enumerate(pipelines):
+            pickle.dump(pipelines, open('../saved_models/{}__{}'.format(now.strftime("%Y-%m-%d_%H:%M"), num), 'wb'))
+    else:
+        pickle.dump(pipelines, open('../saved_models/{}'.format(now.strftime("%Y-%m-%d_%H:%M")), 'wb'))
+
+
+def load_model(filepath):
+    loaded_model = pickle.load(open(filepath, 'rb'))
+    return loaded_model

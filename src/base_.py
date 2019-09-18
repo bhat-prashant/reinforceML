@@ -3,29 +3,27 @@ __author__ = "Prashant Shivarm Bhat"
 __email__ = "PrashantShivaram@outlook.com"
 
 import abc
-import random
-
-random.seed(10)
 import warnings
+from copy import deepcopy
+
 import numpy as np
-import pandas as pd
-from copy import  deepcopy
 from deap import gp, creator, base, tools
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
-from gp_ import grow_individual, mutate, cxOnePoint, eaMuPlusLambda
-from utils_ import append_to_dataframe, reshape_numpy
-from lookup import TransformerLookUp
-from transformer import TransformerClassGenerator, ScaledArray, SelectedArray, ExtractedArray, ClassifiedArray
-from scipy import stats
 
+from ddqn import DDQN
+from gp_ import grow_individual, mutate, cxOnePoint, eaMuPlusLambda
+from lookup import TransformerLookUp
+from transformer import TransformerClassGenerator, ScaledArray, SelectedArray, \
+    ExtractedArray, ClassifiedArray, UnaryModifiedArray, RegressedArray
+from utils_ import reshape_numpy
 
 
 class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
 
-    def __init__(self, estimator, reinforce_learner, feateng, generation, pop_size, mutation_rate,
-                 crossover_rate, scorer, inputArray, outputArray, trans_types, random_state):
+    def __init__(self, estimator, feateng, generation, pop_size, mutation_rate,
+                 crossover_rate, scorer, inputArray, outputArray, trans_types, random_state, use_rl, rl_technique):
         """ Base class for tree based evolution
 
         :param estimator: an instance of sklearn estimator
@@ -51,7 +49,6 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         self._mutation_rate = mutation_rate
         self._crossover_rate = crossover_rate
         self._estimator = estimator
-        self._reinforce_learner = reinforce_learner
         self._scorer = scorer
         self._inputArray = inputArray
         self._outputArray = outputArray
@@ -64,7 +61,11 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         self._X = None
         self._y = None
         self._pset = None
-        self._pandas_columns = None
+        self._columns = None
+        self._use_rl = use_rl
+        self._rl_technique = rl_technique
+        self.logbook = None
+
 
 
     def _setup_pset(self):
@@ -79,7 +80,7 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
             self._pset = gp.PrimitiveSetTyped('MAIN', self._inputArray, self._outputArray)
             self._pset.renameArguments(ARG0='input_matrix')
             lookup = TransformerLookUp(self._feature_count, self._random_state)
-            self._pandas_columns = []  # input features for RL training
+            self._columns = []  # input features for RL training
             for type_ in self._trans_types:
                 trans_lookup = lookup.get_lookup(type_)
                 # add transformers as primitives
@@ -87,7 +88,7 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
                     # add transformers to pset
                     transformer = TransformerClassGenerator(key, trans_lookup[key])
                     if type_ == 'unary':
-                        self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, np.ndarray)
+                        self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, UnaryModifiedArray)
                     elif type_ == 'scaler':
                         self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, ScaledArray)
                     elif type_ == 'selector':
@@ -96,9 +97,8 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
                         self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, ExtractedArray)
                     elif type_ == 'classifier':
                         self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, ClassifiedArray)
-
-                    # input features for RL training
-                    self._pandas_columns.append(key)
+                    elif type_ == 'regressor':
+                        self._pset.addPrimitive(transformer, [np.ndarray] + transformer.arg_types, RegressedArray)
 
                     # add transformer arguments as terminal
                     # arg_types is a list
@@ -107,7 +107,8 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
                         for val in values:
                             arg_name = arg.__name__ + "=" + str(val)
                             self._pset.addTerminal(val, arg, name=arg_name)
-
+                            # input features for RL training
+                            self._columns.append(arg_name)
 
     def _setup_toolbox(self):
         """ sets up toolbox for evolution
@@ -128,8 +129,7 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         self._toolbox.register('evaluate', self._evaluate)
         self._toolbox.register('select', tools.selBest)
         self._toolbox.register('mate', cxOnePoint, self._random_state)
-        self._toolbox.register('mutate', mutate, self._pset, self._random_state)
-        self._toolbox.register('train_RL', self._train_RL)
+        self._toolbox.register('mutate', mutate, self)
 
     def _compile_to_sklearn(self, individual):
         """ Transform DEAP Individual to sklearn pipeline
@@ -178,46 +178,9 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         stats.register("min", np.min)
         stats.register("max", np.max)
         # Future Work: add few new individuals every generation
-        pop, log = eaMuPlusLambda(self._pop, toolbox=self._toolbox, mu=self._pop_size, lambda_=self._pop_size,
-                                  cxpb=self._crossover_rate, mutpb=self._mutation_rate, ngen=self._generation,
-                                  stats=stats, halloffame=self._hof, verbose=True)
-        # Future Work: Export Hall of Fame individuals' sklearn-pipeline to a file
-        self._solution_to_file()
-
-    def _create_dataframe(self):
-        """ From a list of index tuples, create pandas dataframe for the surrogate task
-
-        :return: None
-        """
-        # target column for RL training
-        self._pandas_columns.append('reward')
-        self._rl_dataframe = pd.DataFrame(columns=self._pandas_columns)
-
-    def _train_RL(self):
-        """ Train surrogate network for informed evolution
-
-        Future Work: Use GridSearchCV instead of a bare estimator
-
-        :return:None
-        """
-        self._rl_dataframe = self._rl_dataframe.drop_duplicates()
-        self._rl_dataframe = self._rl_dataframe.reset_index(drop=True)
-        X = self._rl_dataframe.iloc[:, :-1].values
-        y = self._rl_dataframe.iloc[:, -1].values
-        X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=self._random_state)
-        self._reinforce_learner.fit(X_tr, y_tr)
-        y_pr = self._reinforce_learner.predict(X_te)
-        print("RL score : ", stats.pearsonr(y_te, y_pr))
-
-    def _predict_RL(self, dataframe):
-        """ predict fitness using surrogate network
-
-        :param dataframe: pandas dataframe object
-        :return: None
-        """
-        X = dataframe.iloc[:, :-1].values
-        ypred = self._reinforce_learner.predict(X)
-        print("Predicted : ", ypred)
+        pop, self.logbook = eaMuPlusLambda(self._pop, toolbox=self._toolbox, mu=self._pop_size, lambda_=self._pop_size,
+                                           cxpb=self._crossover_rate, mutpb=self._mutation_rate, ngen=self._generation,
+                                           stats=stats, halloffame=self._hof, verbose=True)
 
     def fit(self, X, y):
         """ Fit method for AFE
@@ -236,7 +199,7 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
             train_test_split(self._X, self._y, test_size=0.2, random_state=self._random_state)
         self._feature_count = self._X.shape[1]
         self._setup_pset()
-        self._create_dataframe()
+        self._initialise_ddqn()
         self._setup_toolbox()
         self._pop = self._toolbox.population(self._pop_size)
         self._evolve()
@@ -258,10 +221,8 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
             pipeline.fit(input_matrix, target)
             y_pred = pipeline.predict(self._X_val)
             score = self._scorer(self._y_val, y_pred)
-            self._rl_dataframe = append_to_dataframe(self._rl_dataframe, self._pandas_columns, individual, score)
             return score, individual.height
         except Exception as e:
-            self._rl_dataframe = append_to_dataframe(self._rl_dataframe, self._pandas_columns, individual, score)
             return score, individual.height
 
     @abc.abstractmethod
@@ -274,10 +235,11 @@ class BaseReinforceML(BaseEstimator, TransformerMixin, metaclass=abc.ABCMeta):
         """
         pass
 
-    def _solution_to_file(self, f_name='solution'):
-        """ Future Work: Export best pipeline and the corresponding code to the file
 
-        :param f_name: string, file name
+    def _initialise_ddqn(self):
+        """ Initialise the DDQN
+
         :return: None
         """
-        pass
+        self._ddqn2 = DDQN(state_size=len(self._columns), action_size=len(self._columns), seed=0,
+                           technique=self._rl_technique)

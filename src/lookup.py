@@ -3,15 +3,19 @@ __author__ = "Prashant Shivarm Bhat"
 __email__ = "PrashantShivaram@outlook.com"
 
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, ExtraTreesClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, \
+    ExtraTreesClassifier, RandomForestRegressor, ExtraTreesRegressor, GradientBoostingRegressor, AdaBoostClassifier
 from sklearn.feature_selection import SelectKBest, SelectFromModel, VarianceThreshold, RFE, RFECV, chi2, f_classif
+from sklearn.gaussian_process import GaussianProcessClassifier, GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import RBF, RationalQuadratic, DotProduct, WhiteKernel, ConstantKernel
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB, BernoulliNB, MultinomialNB
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.preprocessing import StandardScaler, MaxAbsScaler, MinMaxScaler, Normalizer, \
     PolynomialFeatures, QuantileTransformer, RobustScaler
-from sklearn.svm import LinearSVC
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.svm import LinearSVC, LinearSVR, SVR
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from xgboost import XGBClassifier
 
 from transformer import AddReinforce, SubtractReinforce, KBinsDiscretizerReinforce, EmptyTransformer, \
     PCAReinforce, MultiplyReinforce, DivideReinforce, LogReinforce
@@ -37,8 +41,11 @@ class TransformerLookUp:
             return self._universal_extractors
         elif trans_type == 'classifier':
             return self._classifiers
+        elif trans_type == 'regressor':
+            return self._regressors
 
     def _create_transformers(self):
+
         self._unary_transformers = {
             'KBinsDiscretizer': {
                 'transformer': KBinsDiscretizerReinforce,
@@ -192,6 +199,23 @@ class TransformerLookUp:
                 'transformer': GaussianNB,
                 'params': {}
             },
+            'GaussianProcessClassifier': {
+                'transformer': GaussianProcessClassifier,
+                'params': {'kernel': [RBF(), ConstantKernel(), WhiteKernel(), DotProduct(), RationalQuadratic()],
+                           'max_iter_predict': [100, 200, 500],
+                           'warm_start': [True, False],
+                           'random_state': [self._random_state],
+                           'n_jobs': [-1]}
+            },
+            'XGBClassifier': {
+                'transformer': XGBClassifier,
+                'params': {'n_estimators': [100],
+                           'max_depth': range(1, 11),
+                           'learning_rate': [1e-3, 1e-2, 1e-1, 0.5, 1.],
+                           'subsample': np.arange(0.05, 1.01, 0.05),
+                           'min_child_weight': range(1, 21),
+                           'nthread': [1]}
+            },
             'BernoulliNB': {
                 'transformer': BernoulliNB,
                 'params': {'alpha': [1e-3, 1e-2, 1e-1, 1., 10., 100.],
@@ -266,5 +290,83 @@ class TransformerLookUp:
                            'max_iter': [100000],
                            'multi_class': ['auto'],
                            'random_state': [self._random_state]}
+            }
+        }
+
+        self._regressors = {
+            'DecisionTreeRegressor': {
+                'transformer': DecisionTreeRegressor,
+                'params': {'criterion': ["gini", "entropy"],
+                           'max_depth': range(1, 11),
+                           'min_samples_split': range(2, 21),
+                           'min_samples_leaf': range(1, 21),
+                           'random_state': [self._random_state]}
+            },
+            'GaussianProcessRegressor': {
+                'transformer': GaussianProcessRegressor,
+                'params': {'kernel': [RBF(), ConstantKernel(), WhiteKernel(), DotProduct(), RationalQuadratic()],
+                           'alpha': [1e-10, 1e-3, 1e-2, 1e-1, 1., 10., 100.],
+                           'random_state': [self._random_state]}
+            },
+            'SVR': {
+                'transformer': SVR,
+                'params': {'gamma': ['auto'],
+                           'kernel': ["rbf", "linear", "poly", "sigmoid"],
+                           'tol': [1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
+                           'C': [1e-4, 1e-3, 1e-2, 1e-1, 0.5, 1., 5., 10., 15., 20., 25.],
+                           'max_iter': [100000]
+                           }
+            },
+            'LinearSVR': {
+                'transformer': LinearSVR,
+                'params': {'tol': [1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
+                           'C': [1e-4, 1e-3, 1e-2, 1e-1, 0.5, 1., 5., 10., 15., 20., 25.],
+                           'max_iter': [100000],
+                           'random_state': [self._random_state]
+                           }
+            },
+            'KNeighborsRegressor': {
+                'transformer': KNeighborsRegressor,
+                'params': {'n_neighbors': range(1, 101),
+                           'weights': ["uniform", "distance"],
+                           'p': [1, 2]
+                           }
+            },
+            'RandomForestRegressor': {
+                'transformer': RandomForestRegressor,
+                'params': {'n_estimators': [100, 200, 300],
+                           'max_features': np.arange(0.05, 1.01, 0.05),
+                           'min_samples_split': range(2, 21),
+                           'min_samples_leaf': range(1, 21),
+                           'bootstrap': [True, False],
+                           'random_state': [self._random_state]
+                           }
+            },
+            'ExtraTreesRegressor': {
+                'transformer': ExtraTreesRegressor,
+                'params': {'n_estimators': [100, 200, 300],
+                           'max_features': np.arange(0.05, 1.01, 0.05),
+                           'min_samples_split': range(2, 21),
+                           'min_samples_leaf': range(1, 21),
+                           'bootstrap': [True, False],
+                           'random_state': [self._random_state]
+                           }
+            },
+            'GradientBoostingRegressor': {
+                'transformer': GradientBoostingRegressor,
+                'params': {'n_estimators': [100, 200, 300],
+                           'max_features': np.arange(0.05, 1.01, 0.05),
+                           'min_samples_split': range(2, 21),
+                           'min_samples_leaf': range(1, 21),
+                           'random_state': [self._random_state]
+                           }
+            },
+            'AdaBoostRegressor': {
+                'transformer': AdaBoostClassifier,
+                'params': {'n_estimators': [100],
+                           'learning_rate': [1e-3, 1e-2, 1e-1, 0.5, 1.],
+                           'random_state': [self._random_state],
+                           # 'loss': ["linear", "square", "exponential"]
+                           }
             }
         }
