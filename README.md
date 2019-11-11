@@ -3,7 +3,7 @@ A handy Data Science Assistant for beginners and exerts alike. ReinforceML is a 
 
 
   
-# ReinforceML: An informed Evolutionary Approach to Automated Machine Learning 
+### ReinforceML: An informed Evolutionary Approach to Automated Machine Learning 
 
 Multi-Objective Evolutionary Algorithms(MOEA) are population-based stochastic or meta-heuristic optimization algorithms. MOEAs involve several competing objectives and a set of Pareto optimal solutions. MOEAs are able to estimate Pareto optimal set in a single run by evolving a population of solutions.
 
