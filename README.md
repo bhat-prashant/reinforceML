@@ -1,6 +1,9 @@
-## reinforceML
+## ReinforceML
+A handy Data Science Assistant for beginners and exerts alike. ReinforceML is a Python Automated Machine Learning tool that optimizes machine learning pipelines using genetic programming and reinforcement learning.
+
+
   
-# An informed Evolutionary Approach to Automated Machine Learning 
+# ReinforceML: An informed Evolutionary Approach to Automated Machine Learning 
 
 Multi-Objective Evolutionary Algorithms(MOEA) are population-based stochastic or meta-heuristic optimization algorithms. MOEAs involve several competing objectives and a set of Pareto optimal solutions. MOEAs are able to estimate Pareto optimal set in a single run by evolving a population of solutions.
 
